@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Box, FileText, Truck, History } from 'lucide-react'
+import { Home, Box, Truck, History } from 'lucide-react'
 
 const NavItem = ({ to, icon: Icon, label, active }) => (
   <Link
@@ -22,23 +22,51 @@ export default function Sidebar({ open = false }) {
   return (
     <aside
       className={`
-        fixed md:relative z-40 md:z-20 
-        top-16 bottom-0 md:top-16 md:h-[calc(100vh-4rem)]
-        w-64 bg-[#0b1220] text-white border-r border-white/10
+        /* Base */
+        bg-[#0b1220] text-white border-r border-white/10
+        w-64 z-40
+
+        /* Full height below navbar */
+        fixed md:sticky
+        top-16 md:top-16
+        bottom-0 md:h-[calc(100vh-4rem)]
+
+        /* Mobile slide-in */
         transform transition-transform duration-300 ease-in-out
-        
-        /* Mobile behavior */
         ${open ? 'translate-x-0' : '-translate-x-full'}
-        
-        /* Desktop behavior */
-        md:${open ? 'translate-x-0' : 'hidden'}
+
+        /* Desktop: ALWAYS visible */
+        md:translate-x-0
       `}
     >
       <nav className="py-3 space-y-1 overflow-y-auto h-full">
-        <NavItem to="/dashboard" icon={Home} label="Dashboard" active={pathname.startsWith('/dashboard')} />
-        <NavItem to="/inventory" icon={Box} label="Inventory" active={pathname.startsWith('/inventory')} />
-        <NavItem to="/transactions" icon={History} label="Transactions" active={pathname.startsWith('/transactions')} />
-        <NavItem to="/suppliers" icon={Truck} label="Suppliers" active={pathname.startsWith('/suppliers')} />
+        <NavItem
+          to="/dashboard"
+          icon={Home}
+          label="Dashboard"
+          active={pathname.startsWith('/dashboard')}
+        />
+
+        <NavItem
+          to="/inventory"
+          icon={Box}
+          label="Inventory"
+          active={pathname.startsWith('/inventory')}
+        />
+
+        <NavItem
+          to="/transactions"
+          icon={History}
+          label="Transactions"
+          active={pathname.startsWith('/transactions')}
+        />
+
+        <NavItem
+          to="/suppliers"
+          icon={Truck}
+          label="Suppliers"
+          active={pathname.startsWith('/suppliers')}
+        />
       </nav>
     </aside>
   )
