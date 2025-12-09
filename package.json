@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "npx --yes vite build",
-    "preview": "vite preview"
+    "build": "npx vite build",
+    "preview": "npx vite preview",
+    "postinstall": "chmod +x ./node_modules/.bin/vite"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.29.0",
