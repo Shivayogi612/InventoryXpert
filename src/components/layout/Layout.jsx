@@ -4,13 +4,29 @@ import Sidebar from './Sidebar'
 
 export default function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col">
+
+      {/* Navbar stays at top on both mobile & desktop */}
       <Navbar onToggleSidebar={() => setSidebarOpen((s) => !s)} />
-      <div className="flex flex-1 overflow-hidden">
+
+      {/* MAIN WRAPPER */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+
+        {/* Sidebar: 
+            - Mobile: slide-in (same behavior)
+            - Desktop: fixed left layout (always visible, full height)
+        */}
         <Sidebar open={sidebarOpen} />
-        <main className="flex-1 p-4 md:p-8 overflow-y-auto">{children}</main>
+
+        {/* Content */}
+        <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+          {children}
+        </main>
       </div>
+
+      {/* Dark overlay for mobile sidebar */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/40 md:hidden z-30"
