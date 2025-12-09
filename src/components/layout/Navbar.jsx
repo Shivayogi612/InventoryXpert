@@ -20,8 +20,7 @@ export default function Navbar({ onToggleSidebar }) {
           >
             ☰
           </button>
-          <div className="hidden md:flex items-center gap-2">
-           
+          <div className="flex items-center gap-2">
             <h1 className="font-semibold text-base text-white">InventoryXpert</h1>
           </div>
         </div>
@@ -43,7 +42,7 @@ export default function Navbar({ onToggleSidebar }) {
             {open && <AlertCenter onClose={() => setOpen(false)} />}
           </div>
           <div className="hidden md:flex items-center gap-3 text-sm">
-            <span className="text-white">{user?.email}</span>
+            <span className="text-white truncate max-w-[150px]">{user?.email}</span>
             <button
               onClick={logout}
               className="group relative h-9 px-4 flex items-center gap-2 rounded-lg overflow-hidden
@@ -64,6 +63,16 @@ export default function Navbar({ onToggleSidebar }) {
               </span>
               <LogOut className="relative z-10 w-4 h-4 transition-all duration-300 
                                  group-hover:translate-x-1 group-hover:scale-110" />
+            </button>
+          </div>
+          {/* Mobile logout button */}
+          <div className="md:hidden">
+            <button
+              onClick={logout}
+              className="p-2 text-white"
+              aria-label="Logout"
+            >
+              <LogOut className="w-5 h-5" />
             </button>
           </div>
         </div>

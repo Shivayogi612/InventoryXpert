@@ -116,13 +116,13 @@ export default function ProductList() {
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="relative w-72">
+          <div className="relative w-full md:w-72">
             <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by name, SKU or barcode" className="pl-9" />
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
           </div>
-          <Button onClick={() => setEditing({})}>Add Product</Button>
+          <Button onClick={() => setEditing({})} className="whitespace-nowrap">Add Product</Button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="w-4 h-4" /></Button>
           <input ref={fileInputRef} onChange={onFileInputChange} type="file" accept="text/csv" className="hidden" />
           <Button variant="outline" size="sm" onClick={handleExport}><Download className="w-4 h-4" /></Button>
@@ -144,13 +144,13 @@ export default function ProductList() {
                 const p = filtered[index]
                 return (
                   <div key={p.id} style={style} className="flex items-center justify-between px-4 border-b hover:bg-gray-50">
-                    <div className="w-1/4">{p.sku}</div>
-                    <div className="w-1/3 cursor-pointer text-primary-600" onClick={() => setSelected(p)}>{p.name}</div>
+                    <div className="w-1/4 truncate">{p.sku}</div>
+                    <div className="w-1/3 cursor-pointer text-primary-600 truncate" onClick={() => setSelected(p)}>{p.name}</div>
                     <div className="w-1/6 text-right">{p.quantity}</div>
                     <div className="w-1/6 text-right">{formatCurrency(p.price || 0)}</div>
                     <div className="w-1/6 flex space-x-2 justify-end">
-                      <button onClick={() => setShowBarcode(p)} className="px-2 py-1 bg-gray-100 rounded">Barcode</button>
-                      <button onClick={() => setEditing(p)} className="px-2 py-1 bg-gray-100 rounded">Edit</button>
+                      <button onClick={() => setShowBarcode(p)} className="px-2 py-1 bg-gray-100 rounded text-xs">Barcode</button>
+                      <button onClick={() => setEditing(p)} className="px-2 py-1 bg-gray-100 rounded text-xs">Edit</button>
                     </div>
                   </div>
                 )
@@ -158,47 +158,49 @@ export default function ProductList() {
             </List>
           </div>
         ) : (
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">SKU</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Category</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Quantity</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Price</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((p) => (
-                <tr key={p.id} className="border-t hover:bg-gray-50">
-                  <td className="px-4 py-3">{p.sku}</td>
-                  <td className="px-4 py-3 cursor-pointer text-primary-600" onClick={() => setSelected(p)}>{p.name}</td>
-                  <td className="px-4 py-3">{p.category}</td>
-                  <td className="px-4 py-3">{p.quantity}</td>
-                  <td className="px-4 py-3">{formatCurrency(p.price || 0)}</td>
-                  <td className="px-4 py-3">
-                    {p.quantity === 0 ? (
-                      <Badge variant="danger">Out of Stock</Badge>
-                    ) : p.quantity <= p.reorder_level ? (
-                      <Badge variant="warning">Low Stock</Badge>
-                    ) : (
-                      <Badge variant="success">In Stock</Badge>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => setShowBarcode(p)}>Barcode</Button>
-                    <Button variant="outline" size="sm" onClick={() => setEditing(p)}>Edit</Button>
-                    <Button variant="destructive" size="sm" onClick={async () => { if (confirm('Delete this product?')) await deleteProduct(p.id) }}>Delete</Button>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">SKU</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 hidden md:table-cell">Category</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Quantity</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Price</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 hidden md:table-cell">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Actions</th>
                 </tr>
-              ))}
-              {!filtered.length && (
-                <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-500">No products found</td></tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((p) => (
+                  <tr key={p.id} className="border-t hover:bg-gray-50">
+                    <td className="px-4 py-3 truncate max-w-[100px]">{p.sku}</td>
+                    <td className="px-4 py-3 cursor-pointer text-primary-600 truncate max-w-[150px]" onClick={() => setSelected(p)}>{p.name}</td>
+                    <td className="px-4 py-3 hidden md:table-cell">{p.category}</td>
+                    <td className="px-4 py-3">{p.quantity}</td>
+                    <td className="px-4 py-3">{formatCurrency(p.price || 0)}</td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      {p.quantity === 0 ? (
+                        <Badge variant="danger">Out of Stock</Badge>
+                      ) : p.quantity <= p.reorder_level ? (
+                        <Badge variant="warning">Low Stock</Badge>
+                      ) : (
+                        <Badge variant="success">In Stock</Badge>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => setShowBarcode(p)} className="text-xs px-2 py-1">Barcode</Button>
+                      <Button variant="outline" size="sm" onClick={() => setEditing(p)} className="text-xs px-2 py-1">Edit</Button>
+                      <Button variant="destructive" size="sm" onClick={async () => { if (confirm('Delete this product?')) await deleteProduct(p.id) }} className="text-xs px-2 py-1">Delete</Button>
+                    </td>
+                  </tr>
+                ))}
+                {!filtered.length && (
+                  <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-500">No products found</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

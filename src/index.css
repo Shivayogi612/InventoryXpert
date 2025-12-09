@@ -325,7 +325,39 @@ body {
     flex-direction: row;
     justify-content: flex-start;
   }
+  
+  .charts-grid {
+    gap: 1rem;
+  }
+  
+  .chart-card {
+    padding: 1rem;
+  }
+  
+  .metric-card {
+    padding: 1rem;
+  }
+  
+  .metric-value {
+    font-size: 1.5rem;
+  }
 }
+
+@media (max-width: 480px) {
+  .traffic-legend {
+    align-items: flex-start;
+  }
+  
+  .legend-item {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .legend-text {
+    text-align: left;
+  }
+}
+
 /* Supplier & Order Management Styles */
 .page-header {
   display: flex;
