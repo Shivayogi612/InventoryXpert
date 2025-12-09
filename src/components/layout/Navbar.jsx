@@ -21,6 +21,7 @@ export default function Navbar({ onToggleSidebar }) {
             ☰
           </button>
           <div className="hidden md:flex items-center gap-2">
+            <img src="logo (2).png" alt="logo" className="h-12 w-12 mb-3" />
             <h1 className="font-semibold text-base text-white">InventoryXpert</h1>
           </div>
         </div>

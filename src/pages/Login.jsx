@@ -31,14 +31,11 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-white p-4">
       <Card className="max-w-md w-full p-8 rounded-2xl shadow-xl">
 
-        {/* LOGO + APP NAME */}
+        {/* APP NAME ONLY */}
         <div className="flex flex-col items-center mb-6">
-          <div className="flex items-center gap-2">
-            <img src="logo (2).png" alt="logo" className="h-14 w-14" />
-            <h1 className="font-semibold text-xl text-gray-900">
-              InventoryXpert
-            </h1>
-          </div>
+          <h1 className="font-semibold text-xl text-gray-900">
+            InventoryXpert
+          </h1>
           <p className="text-gray-500 text-sm mt-1">
             Smart Inventory Management System
           </p>
@@ -76,7 +73,6 @@ export default function Login() {
   type="password"
   required
 />
-
           </div>
 
           {/* Submit */}
