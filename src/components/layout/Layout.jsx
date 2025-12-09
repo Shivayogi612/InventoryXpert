@@ -12,7 +12,7 @@ export default function Layout({ children }) {
       <Navbar onToggleSidebar={() => setSidebarOpen((s) => !s)} />
 
       {/* MAIN WRAPPER */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden md:overflow-visible">
 
         {/* Sidebar: 
             - Mobile: slide-in (same behavior)
