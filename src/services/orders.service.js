@@ -9,7 +9,8 @@ export const ordersService = {
                 .from('purchase_orders')
                 .select(`
           *,
-          supplier:suppliers(id, name, contact_person, email, phone)
+          supplier:suppliers(id, name, contact_person, email, phone),
+          items:purchase_order_items(*)
         `)
                 .order('created_at', { ascending: false })
             if (error) throw error
@@ -46,7 +47,8 @@ export const ordersService = {
                 .from('purchase_orders')
                 .select(`
           *,
-          supplier:suppliers(id, name, contact_person, email, phone)
+          supplier:suppliers(id, name, contact_person, email, phone),
+          items:purchase_order_items(*)
         `)
                 .eq('status', status)
                 .order('created_at', { ascending: false })
@@ -64,7 +66,8 @@ export const ordersService = {
                 .from('purchase_orders')
                 .select(`
           *,
-          supplier:suppliers(id, name, contact_person, email, phone)
+          supplier:suppliers(id, name, contact_person, email, phone),
+          items:purchase_order_items(*)
         `)
                 .in('status', ['pending', 'shipped'])
                 .order('expected_delivery', { ascending: true })
@@ -83,7 +86,8 @@ export const ordersService = {
                 .from('purchase_orders')
                 .select(`
           *,
-          supplier:suppliers(id, name, contact_person, email, phone)
+          supplier:suppliers(id, name, contact_person, email, phone),
+          items:purchase_order_items(*)
         `)
                 .or(`status.eq.delayed,and(status.neq.delivered,expected_delivery.lt.${today})`)
                 .order('expected_delivery', { ascending: true })
