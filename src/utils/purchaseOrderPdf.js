@@ -1,5 +1,6 @@
-import { jsPDF } from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+import { loadFontAsBase64 } from './fontUtils';
 
 const STORE_INFO = {
   name: "NovaMart",
@@ -8,85 +9,135 @@ const STORE_INFO = {
   email: "support@novamart.store",
 };
 
+// Simple ₹ formatter (NO INR TEXT)
+const formatRupee = (amount = 0) => `₹ ${amount.toFixed(2)}`;
 
-const currency = new Intl.NumberFormat('en-IN', {
-  style: 'currency',
-  currency: 'INR'
-})
+export async function downloadPurchaseOrderPdf(order) {
+  if (!order) throw new Error("Order data missing");
 
-export function downloadPurchaseOrderPdf(order) {
-  if (!order) {
-    throw new Error('No order data provided for PDF export')
+  const doc = new jsPDF("p", "mm", "a4");
+
+  /* ---------------- FONT SETUP ---------------- */
+  try {
+    const fontBase64 = await loadFontAsBase64('/src/assets/DejaVuSans.ttf');
+    doc.addFileToVFS("DejaVuSans.ttf", fontBase64);
+    doc.addFont("DejaVuSans.ttf", "DejaVu", "normal");
+    doc.addFont("DejaVuSans.ttf", "DejaVu", "bold");
+    doc.setFont("DejaVu");
+  } catch (error) {
+    console.warn('Failed to load custom font, using default font:', error);
   }
 
-  const doc = new jsPDF()
+  /* ---------------- HEADER BAR ---------------- */
+  doc.setFillColor(99, 102, 241); // Indigo
+  doc.rect(0, 0, 210, 32, "F");
 
-  // Header
-  doc.setFontSize(18)
-  doc.text(STORE_INFO.name, 14, 18)
-  doc.setFontSize(10)
-  doc.text(STORE_INFO.address, 14, 24)
-  doc.text(`Phone: ${STORE_INFO.phone}`, 14, 30)
-  doc.text(`Email: ${STORE_INFO.email}`, 14, 36)
+  doc.setTextColor(255);
+  doc.setFont("DejaVu", "bold");
+  doc.setFontSize(20);
+  doc.text(STORE_INFO.name, 14, 20);
 
-  doc.setFontSize(16)
-  doc.text('Purchase Order', 150, 18)
+  doc.setFontSize(12);
+  doc.text("PURCHASE ORDER", 150, 20);
 
-  doc.setFontSize(11)
-  const createdDate = order.order_date || order.created_at
-  doc.text(`PO Number: ${order.order_number}`, 150, 26)
-  if (createdDate) {
-    doc.text(`Order Date: ${new Date(createdDate).toLocaleDateString()}`, 150, 32)
-  }
+  /* ---------------- STORE INFO ---------------- */
+  doc.setTextColor(0);
+  doc.setFont("DejaVu", "normal");
+  doc.setFontSize(10);
+  doc.text(STORE_INFO.address, 14, 42);
+  doc.text(`Phone: ${STORE_INFO.phone}`, 14, 48);
+  doc.text(`Email: ${STORE_INFO.email}`, 14, 54);
+
+  /* ---------------- ORDER META ---------------- */
+  doc.setFontSize(10);
+  doc.text(`PO Number: ${order.order_number}`, 150, 42);
+  doc.text(
+    `Order Date: ${new Date(order.order_date || order.created_at).toLocaleDateString()}`,
+    150,
+    48
+  );
   if (order.expected_delivery) {
-    doc.text(`Expected Delivery: ${new Date(order.expected_delivery).toLocaleDateString()}`, 150, 38)
+    doc.text(
+      `Expected Delivery: ${new Date(order.expected_delivery).toLocaleDateString()}`,
+      150,
+      54
+    );
   }
 
-  // Supplier info
-  doc.setFontSize(12)
-  doc.text('Supplier Details', 14, 50)
-  doc.setFontSize(10)
-  doc.text(order.supplier?.name || 'Supplier: N/A', 14, 56)
-  if (order.supplier?.contact_person) doc.text(`Contact: ${order.supplier.contact_person}`, 14, 62)
-  if (order.supplier?.email) doc.text(`Email: ${order.supplier.email}`, 14, 68)
-  if (order.supplier?.phone) doc.text(`Phone: ${order.supplier.phone}`, 14, 74)
+  /* ---------------- SUPPLIER BOX ---------------- */
+  doc.setDrawColor(220);
+  doc.setFillColor(245, 245, 245);
+  doc.roundedRect(14, 62, 182, 36, 3, 3, "FD"); // slightly taller for spacing
 
-  const items = order.items || []
+  doc.setFontSize(12);
+  doc.setFont("DejaVu", "bold");
+  doc.text("Supplier Details", 18, 72);
+
+  doc.setFontSize(10);
+  doc.setFont("DejaVu", "normal");
+  let y = 78;
+  doc.text(order.supplier?.name || "N/A", 18, y); y += 6;
+  if (order.supplier?.contact_person) doc.text(`Contact: ${order.supplier.contact_person}`, 18, y), (y += 6);
+  if (order.supplier?.email) doc.text(`Email: ${order.supplier.email}`, 18, y), (y += 6);
+  if (order.supplier?.phone) doc.text(`Phone: ${order.supplier.phone}`, 18, y);
+
+  /* ---------------- ITEMS TABLE ---------------- */
+  const items = order.items || [];
 
   autoTable(doc, {
-    startY: 82,
-    head: [['Item', 'Quantity', 'Unit Price', 'Line Total']],
-    body: items.length
-      ? items.map((item) => [
-          item.product_name || 'Unnamed item',
-          item.quantity || 0,
-          currency.format(item.unit_price || 0),
-          currency.format((item.quantity || 0) * (item.unit_price || 0))
-        ])
-      : [['No items found', '-', '-', '-']],
-    styles: { fontSize: 10 },
-    headStyles: { fillColor: [99, 102, 241] }
-  })
+    startY: 104,
+    head: [["Item Description", "Qty", "Unit Price", "Amount"]],
+    body: items.map((item) => [
+      item.product_name || "Unnamed Item",
+      item.quantity || 0,
+      formatRupee(item.unit_price || 0),
+      formatRupee((item.quantity || 0) * (item.unit_price || 0)),
+    ]),
+    styles: { font: "DejaVu", fontSize: 10, cellPadding: 6 },
+    headStyles: { fillColor: [220, 230, 241], textColor: 0, fontStyle: "bold" },
+    alternateRowStyles: { fillColor: [245, 245, 245] },
+    columnStyles: {
+      1: { halign: "center" },
+      2: { halign: "right" },
+      3: { halign: "right" },
+    },
+    tableLineColor: [200, 200, 200],
+    tableLineWidth: 0.3,
+  });
 
-  const tableBottom = doc.lastAutoTable.finalY || 100
-  const totalValue =
-    order.total_value ||
-    items.reduce((sum, item) => sum + (item.quantity || 0) * (item.unit_price || 0), 0)
+  /* ---------------- TOTAL BOX ---------------- */
+  const tableEndY = doc.lastAutoTable.finalY;
+  const total = order.total_value || items.reduce((sum, i) => sum + (i.quantity || 0) * (i.unit_price || 0), 0);
 
-  doc.setFontSize(11)
-  doc.text(`Total Items: ${order.items_count ?? items.length}`, 14, tableBottom + 10)
-  doc.text(`Total Amount: ${currency.format(totalValue)}`, 14, tableBottom + 18)
+  doc.setDrawColor(180);
+  doc.setFillColor(235, 235, 235);
+  doc.roundedRect(120, tableEndY + 10, 76, 28, 3, 3, "FD");
 
+  doc.setFontSize(10);
+  doc.setFont("DejaVu", "normal");
+  doc.text(`Total Items: ${order.items_count ?? items.length}`, 124, tableEndY + 18);
+
+  doc.setFontSize(12);
+  doc.setFont("DejaVu", "bold");
+  doc.text("Total Amount:", 124, tableEndY + 28);
+  doc.text(formatRupee(total), 188, tableEndY + 28, { align: "right", baseline: "alphabetic" });
+
+  /* ---------------- NOTES ---------------- */
   if (order.notes) {
-    doc.text('Notes:', 14, tableBottom + 28)
-    doc.setFontSize(10)
-    const splitNotes = doc.splitTextToSize(order.notes, 180)
-    doc.text(splitNotes, 14, tableBottom + 34)
+    doc.setFontSize(10);
+    doc.text("Notes:", 14, tableEndY + 40);
+    doc.text(doc.splitTextToSize(order.notes, 180), 14, tableEndY + 46);
   }
 
-  doc.setFontSize(9)
-  doc.setTextColor(120)
-  doc.text('Generated by NovaMart Smart Inventory Manager', 14, 285)
+  /* ---------------- FOOTER ---------------- */
+  doc.setFontSize(9);
+  doc.setTextColor(120);
+  doc.text(
+    "Generated by NovaMart Smart Inventory Manager",
+    105,
+    290,
+    { align: "center" }
+  );
 
-  doc.save(`${order.order_number || 'purchase-order'}.pdf`)
+  doc.save(`${order.order_number || "purchase-order"}.pdf`);
 }

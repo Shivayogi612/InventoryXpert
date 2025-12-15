@@ -344,7 +344,7 @@ export default function SupplierOrders() {
                 toast.error('Unable to find that purchase order')
                 return
             }
-            downloadPurchaseOrderPdf(order)
+            await downloadPurchaseOrderPdf(order)
         } catch (err) {
             console.error('Download PDF failed', err)
             toast.error(err.message || 'Failed to download purchase order PDF')
