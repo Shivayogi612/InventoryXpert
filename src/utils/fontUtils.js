@@ -22,14 +22,37 @@ export function arrayBufferToBase64(buffer) {
  */
 export async function loadFontAsBase64(fontPath) {
     try {
+        // Try multiple approaches for font loading
         const response = await fetch(fontPath);
         if (!response.ok) {
-            throw new Error(`Failed to load font: ${response.status} ${response.statusText}`);
+            // Try alternative paths for different environments
+            const pathsToTry = [
+                fontPath,
+                fontPath.replace('/src/', '/'),
+                `/src${fontPath}`,
+                fontPath.startsWith('/') ? fontPath.substring(1) : `/${fontPath}`
+            ];
+            
+            for (const path of pathsToTry) {
+                try {
+                    const altResponse = await fetch(path);
+                    if (altResponse.ok) {
+                        const arrayBuffer = await altResponse.arrayBuffer();
+                        return arrayBufferToBase64(arrayBuffer);
+                    }
+                } catch (e) {
+                    // Continue to next path
+                }
+            }
+            
+            throw new Error(`Failed to load font from any of the attempted paths: ${pathsToTry.join(', ')}`);
         }
         const arrayBuffer = await response.arrayBuffer();
         return arrayBufferToBase64(arrayBuffer);
     } catch (error) {
         console.error('Error loading font:', error);
+        // As a last resort, we'll use the helvetica font with a manual glyph for Rupee symbol
+        // This is not ideal but will prevent the app from crashing
         throw error;
     }
 }

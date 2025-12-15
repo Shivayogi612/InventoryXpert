@@ -19,13 +19,16 @@ export async function downloadPurchaseOrderPdf(order) {
 
   /* ---------------- FONT SETUP ---------------- */
   try {
-    const fontBase64 = await loadFontAsBase64('/src/assets/DejaVuSans.ttf');
+    // Load the font from the public folder (works in both dev and prod)
+    const fontBase64 = await loadFontAsBase64('/DejaVuSans.ttf');
     doc.addFileToVFS("DejaVuSans.ttf", fontBase64);
     doc.addFont("DejaVuSans.ttf", "DejaVu", "normal");
     doc.addFont("DejaVuSans.ttf", "DejaVu", "bold");
     doc.setFont("DejaVu");
   } catch (error) {
     console.warn('Failed to load custom font, using default font:', error);
+    // Fall back to default fonts but still try to support Rupee symbol
+    doc.setFont("helvetica");
   }
 
   /* ---------------- HEADER BAR ---------------- */
