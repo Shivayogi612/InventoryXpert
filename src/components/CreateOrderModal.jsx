@@ -15,6 +15,9 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
     const [orderItems, setOrderItems] = useState([])
     const [expectedDelivery, setExpectedDelivery] = useState('')
     const [notes, setNotes] = useState('')
+    
+    // Temporary products that will be added to inventory when order is created
+    const [tempProducts, setTempProducts] = useState([])
 
     // Load suppliers and products
     useEffect(() => {
@@ -59,6 +62,26 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
         }
     }
 
+    const addTempProduct = () => {
+        const newTempProduct = {
+            id: `temp-${Date.now()}`,
+            product_name: `New Product ${tempProducts.length + 1}`,
+            quantity: 1,
+            unit_price: 0
+        }
+        setTempProducts([...tempProducts, newTempProduct])
+    }
+
+    const updateTempProduct = (id, field, value) => {
+        setTempProducts(tempProducts.map(item => 
+            item.id === id ? { ...item, [field]: value } : item
+        ))
+    }
+
+    const removeTempProduct = (id) => {
+        setTempProducts(tempProducts.filter(item => item.id !== id))
+    }
+
     const updateItemQuantity = (productId, quantity) => {
         if (quantity <= 0) {
             removeItem(productId)
@@ -84,7 +107,9 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
     }
 
     const calculateTotal = () => {
-        return orderItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0)
+        const regularItemsTotal = orderItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0)
+        const tempItemsTotal = tempProducts.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0)
+        return regularItemsTotal + tempItemsTotal
     }
 
     const handleCreateOrder = async () => {
@@ -92,7 +117,7 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
             alert('Please select a supplier')
             return
         }
-        if (orderItems.length === 0) {
+        if (orderItems.length === 0 && tempProducts.length === 0) {
             alert('Please add at least one item')
             return
         }
@@ -104,7 +129,7 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
                 order_number: ordersService.generateOrderNumber(),
                 supplier_id: selectedSupplier.id,
                 status: 'pending',
-                items_count: orderItems.length,
+                items_count: orderItems.length + tempProducts.length,
                 total_value: calculateTotal(),
                 order_date: new Date().toISOString().split('T')[0],
                 expected_delivery: expectedDelivery || null,
@@ -113,9 +138,38 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
 
             const order = await ordersService.create(orderData)
 
-            // Add items to the order
+            // Add regular items to the order
             for (const item of orderItems) {
                 await ordersService.addOrderItem(order.id, item)
+            }
+
+            // Add temporary products to the order and save them to inventory
+            for (const tempItem of tempProducts) {
+                // Create the product in inventory first
+                const productPayload = {
+                    name: tempItem.product_name,
+                    sku: `TEMP-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                    supplier: selectedSupplier.name,
+                    price: tempItem.unit_price,
+                    cost: tempItem.unit_price, // Using same value for cost as price
+                    quantity: 0, // Will be updated when order is delivered
+                    is_active: true
+                }
+
+                try {
+                    const createdProduct = await productsService.create(productPayload)
+                    
+                    // Add the newly created product to the order
+                    await ordersService.addOrderItem(order.id, {
+                        product_id: createdProduct.id,
+                        product_name: tempItem.product_name,
+                        quantity: tempItem.quantity,
+                        unit_price: tempItem.unit_price
+                    })
+                } catch (err) {
+                    console.error('Error creating temporary product:', err)
+                    // Continue with other items even if one fails
+                }
             }
 
             alert(`Purchase Order ${orderData.order_number} created successfully!`)
@@ -133,6 +187,7 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
         setStep(1)
         setSelectedSupplier(null)
         setOrderItems([])
+        setTempProducts([])
         setExpectedDelivery('')
         setNotes('')
         onClose()
@@ -244,10 +299,66 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
                                 )}
                             </div>
 
+                            {/* Temporary Products Section */}
+                            <div className="mt-6">
+                                <div className="flex justify-between items-center mb-3">
+                                    <h4 className="section-label">New Products</h4>
+                                    <button 
+                                        type="button" 
+                                        className="btn-secondary flex items-center gap-1"
+                                        onClick={addTempProduct}
+                                    >
+                                        <Plus size={16} />
+                                        Add New Product
+                                    </button>
+                                </div>
+                                
+                                {tempProducts.length > 0 && (
+                                    <div className="border border-gray-200 rounded-lg p-3 mb-4">
+                                        {tempProducts.map((item) => (
+                                            <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-2 mb-2 bg-gray-50 rounded">
+                                                <input
+                                                    type="text"
+                                                    className="form-input flex-1"
+                                                    value={item.product_name}
+                                                    onChange={(e) => updateTempProduct(item.id, 'product_name', e.target.value)}
+                                                    placeholder="Product name"
+                                                />
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="number"
+                                                        className="form-input w-20"
+                                                        value={item.quantity}
+                                                        onChange={(e) => updateTempProduct(item.id, 'quantity', e.target.value)}
+                                                        min="1"
+                                                    />
+                                                    <span className="text-gray-500">×</span>
+                                                    <input
+                                                        type="number"
+                                                        className="form-input w-24"
+                                                        value={item.unit_price}
+                                                        onChange={(e) => updateTempProduct(item.id, 'unit_price', e.target.value)}
+                                                        min="0"
+                                                        step="0.01"
+                                                    />
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="text-red-500 hover:text-red-700 p-1"
+                                                    onClick={() => removeTempProduct(item.id)}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
                             {/* Selected Items */}
-                            {orderItems.length > 0 && (
+                            {(orderItems.length > 0 || tempProducts.length > 0) && (
                                 <div className="selected-items-section">
-                                    <h4 className="section-label">Order Items ({orderItems.length})</h4>
+                                    <h4 className="section-label">Order Items ({orderItems.length + tempProducts.length})</h4>
                                     <div className="items-list">
                                         {orderItems.map(item => (
                                             <div key={item.product_id} className="order-item">
@@ -279,6 +390,37 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
                                                 </div>
                                             </div>
                                         ))}
+                                        
+                                        {tempProducts.map(item => (
+                                            <div key={item.id} className="order-item bg-blue-50">
+                                                <div className="item-name">{item.product_name} (New)</div>
+                                                <div className="item-controls">
+                                                    <input
+                                                        type="number"
+                                                        className="item-input"
+                                                        value={item.quantity}
+                                                        onChange={(e) => updateTempProduct(item.id, 'quantity', e.target.value)}
+                                                        min="1"
+                                                    />
+                                                    <span className="item-label">×</span>
+                                                    <input
+                                                        type="number"
+                                                        className="item-input"
+                                                        value={item.unit_price}
+                                                        onChange={(e) => updateTempProduct(item.id, 'unit_price', e.target.value)}
+                                                        min="0"
+                                                        step="0.01"
+                                                    />
+                                                    <span className="item-total">₹{(item.quantity * item.unit_price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                    <button
+                                                        className="btn-remove"
+                                                        onClick={() => removeTempProduct(item.id)}
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                     <div className="order-total">
                                         <span>Total:</span>
@@ -292,7 +434,7 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
                                 <button
                                     className="btn-primary"
                                     onClick={() => setStep(3)}
-                                    disabled={orderItems.length === 0}
+                                    disabled={(orderItems.length === 0 && tempProducts.length === 0)}
                                 >
                                     Next: Review
                                 </button>
@@ -312,7 +454,7 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
                                 </div>
                                 <div className="review-item">
                                     <label>Items:</label>
-                                    <span>{orderItems.length} items</span>
+                                    <span>{orderItems.length + tempProducts.length} items</span>
                                 </div>
                                 <div className="review-item">
                                     <label>Total Value:</label>
@@ -345,6 +487,13 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
                                 {orderItems.map(item => (
                                     <div key={item.product_id} className="summary-item">
                                         <span>{item.product_name}</span>
+                                        <span>{item.quantity} × ₹{item.unit_price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} = ₹{(item.quantity * item.unit_price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                ))}
+                                
+                                {tempProducts.map(item => (
+                                    <div key={item.id} className="summary-item bg-blue-50">
+                                        <span>{item.product_name} (New Product)</span>
                                         <span>{item.quantity} × ₹{item.unit_price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} = ₹{(item.quantity * item.unit_price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                     </div>
                                 ))}

@@ -7,6 +7,7 @@ import { ordersService } from '../services/orders.service'
 import { Package, Truck, AlertCircle, Plus, Phone, Mail, MapPin, Calendar, CheckCircle, Trash2, Edit } from 'lucide-react'
 import CreateOrderModal from '../components/CreateOrderModal'
 import AddSupplierModal from '../components/AddSupplierModal'
+import EditSupplierModal from '../components/EditSupplierModal'
 import DeleteSupplierModal from '../components/DeleteSupplierModal'
 import { toast } from 'react-hot-toast'
 import { downloadPurchaseOrderPdf } from '../utils/purchaseOrderPdf'
@@ -30,6 +31,7 @@ function StatCard({ icon: Icon, label, value, color }) {
 
 function SupplierCard({ supplier, onRefresh }) {
     const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [showEditModal, setShowEditModal] = useState(false)
     
     return (
         <>
@@ -58,7 +60,10 @@ function SupplierCard({ supplier, onRefresh }) {
                     </div>
                 </div>
                 <div className="mt-4 flex gap-2 flex-wrap">
-                    <button className="btn-secondary flex-1 flex items-center justify-center gap-1">
+                    <button 
+                        className="btn-secondary flex-1 flex items-center justify-center gap-1"
+                        onClick={() => setShowEditModal(true)}
+                    >
                         <Edit size={16} />
                         Edit
                     </button>
@@ -71,6 +76,16 @@ function SupplierCard({ supplier, onRefresh }) {
                     </button>
                 </div>
             </div>
+            
+            <EditSupplierModal
+                isOpen={showEditModal}
+                onClose={() => setShowEditModal(false)}
+                supplier={supplier}
+                onSuccess={() => {
+                    toast.success('Supplier updated successfully')
+                    onRefresh?.()
+                }}
+            />
             
             <DeleteSupplierModal
                 isOpen={showDeleteModal}
