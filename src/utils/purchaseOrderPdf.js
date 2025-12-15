@@ -15,6 +15,9 @@ const formatRupee = (amount = 0) => `₹ ${amount.toFixed(2)}`;
 export async function downloadPurchaseOrderPdf(order) {
   if (!order) throw new Error("Order data missing");
 
+  // Debugging: Log the order data to see its structure
+  console.log('Order data for PDF generation:', JSON.stringify(order, null, 2));
+
   const doc = new jsPDF("p", "mm", "a4");
 
   /* ---------------- FONT SETUP ---------------- */
@@ -86,7 +89,16 @@ export async function downloadPurchaseOrderPdf(order) {
 
   /* ---------------- ITEMS TABLE ---------------- */
   // Ensure we're accessing the items correctly from the order object
-  const items = (order.items && Array.isArray(order.items)) ? order.items : [];
+  let items = [];
+  
+  // Check different possible locations for items
+  if (order.items && Array.isArray(order.items)) {
+    items = order.items;
+  } else if (order.purchase_order_items && Array.isArray(order.purchase_order_items)) {
+    items = order.purchase_order_items;
+  }
+  
+  console.log('Items found for PDF:', items.length, items);
   
   if (items.length === 0) {
     console.warn('No items found in order for PDF generation');
