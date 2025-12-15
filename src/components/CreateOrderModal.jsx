@@ -176,10 +176,8 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
             }
 
             // Add temporary products to the order and save them to inventory
+            const tempProductItems = []
             for (const tempItem of tempProducts) {
-                // Check if this is a supplier temp product (has more details)
-                const isSupplierTempProduct = tempItem.product_name && !tempItem.id.toString().startsWith('temp-') && tempItem.id.toString().startsWith('order-temp-')
-                
                 // Create the product in inventory first
                 const productPayload = {
                     name: tempItem.product_name,
@@ -194,8 +192,8 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
                 try {
                     const createdProduct = await productsService.create(productPayload)
                     
-                    // Add the newly created product to the order
-                    await ordersService.addOrderItem(order.id, {
+                    // Store the created product info for later use
+                    tempProductItems.push({
                         product_id: createdProduct.id,
                         product_name: tempItem.product_name,
                         quantity: tempItem.quantity,
@@ -205,6 +203,11 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
                     console.error('Error creating temporary product:', err)
                     // Continue with other items even if one fails
                 }
+            }
+
+            // Add the newly created products to the order
+            for (const tempItem of tempProductItems) {
+                await ordersService.addOrderItem(order.id, tempItem)
             }
 
             // Clear the supplier's temporary products from localStorage since they've been ordered
