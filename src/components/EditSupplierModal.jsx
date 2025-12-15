@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { X, User, Mail, Phone, MapPin, Star, StickyNote, Plus, Package, Trash2 } from 'lucide-react'
+import { X, User, Mail, Phone, MapPin, Star, StickyNote, Plus, Package, Trash2, Info } from 'lucide-react'
 import Input from './ui/Input'
 import Button from './ui/Button'
 import { useEnhancedSuppliers } from '../hooks/useEnhancedSuppliers'
@@ -93,35 +93,18 @@ export default function EditSupplierModal({ isOpen, onClose, supplier, onSuccess
   }
 
   const handleChange = (field) => (event) => {
-    setForm((prev) => ({
-      ...prev,
-      [field]: event.target.value
-    }))
+    setForm({ ...form, [field]: event.target.value })
   }
 
   const handleNewProductChange = (field) => (event) => {
-    setNewProduct((prev) => ({
-      ...prev,
-      [field]: event.target.value
-    }))
+    setNewProduct({ ...newProduct, [field]: event.target.value })
   }
 
   const validate = () => {
-    const nextErrors = {}
-    if (!form.name.trim()) {
-      nextErrors.name = 'Supplier name is required'
-    }
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-      nextErrors.email = 'Enter a valid email address'
-    }
-    if (form.rating) {
-      const ratingValue = Number(form.rating)
-      if (Number.isNaN(ratingValue) || ratingValue < 0 || ratingValue > 5) {
-        nextErrors.rating = 'Rating must be between 0 and 5'
-      }
-    }
-    setErrors(nextErrors)
-    return Object.keys(nextErrors).length === 0
+    const errs = {}
+    if (!form.name.trim()) errs.name = 'Supplier name is required'
+    setErrors(errs)
+    return Object.keys(errs).length === 0
   }
 
   const handleAddTempProduct = () => {
@@ -131,8 +114,10 @@ export default function EditSupplierModal({ isOpen, onClose, supplier, onSuccess
     }
     
     const tempProduct = {
-      id: `temp-${Date.now()}`,
-      ...newProduct,
+      id: `temp-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      name: newProduct.name.trim(),
+      sku: newProduct.sku.trim() || null,
+      description: newProduct.description.trim() || '',
       price: Number(newProduct.price) || 0,
       cost: Number(newProduct.cost) || 0
     }
@@ -218,166 +203,165 @@ export default function EditSupplierModal({ isOpen, onClose, supplier, onSuccess
                 <Input
                   value={form.contact_person}
                   onChange={handleChange('contact_person')}
-                  placeholder="Full name"
+                  placeholder="John Smith"
                 />
               </label>
 
               <label className="form-field">
-                <span>Email Address</span>
-                <div className="with-icon">
-                  <Mail size={16} />
-                  <Input
-                    type="email"
-                    value={form.email}
-                    onChange={handleChange('email')}
-                    placeholder="contact@supplier.com"
-                  />
-                </div>
-                {errors.email && <p className="field-error">{errors.email}</p>}
+                <span>Email</span>
+                <Input
+                  type="email"
+                  value={form.email}
+                  onChange={handleChange('email')}
+                  placeholder="john@atlascomponents.com"
+                />
               </label>
 
               <label className="form-field">
-                <span>Phone Number</span>
-                <div className="with-icon">
-                  <Phone size={16} />
-                  <Input
-                    value={form.phone}
-                    onChange={handleChange('phone')}
-                    placeholder="+1 (555) 000-0000"
-                  />
-                </div>
+                <span>Phone</span>
+                <Input
+                  value={form.phone}
+                  onChange={handleChange('phone')}
+                  placeholder="+1 (555) 123-4567"
+                />
               </label>
 
-              <label className="form-field form-full">
+              <label className="form-field md:col-span-2">
                 <span>Address</span>
-                <div className="with-icon">
-                  <MapPin size={16} />
-                  <Input
-                    value={form.address}
-                    onChange={handleChange('address')}
-                    placeholder="Street, City, State"
-                  />
-                </div>
+                <Input
+                  value={form.address}
+                  onChange={handleChange('address')}
+                  placeholder="123 Industrial Blvd, Suite 100, City, State 12345"
+                />
               </label>
 
               <label className="form-field">
                 <span>Rating</span>
-                <div className="with-icon">
-                  <Star size={16} />
-                  <Input
-                    type="number"
-                    min="0"
-                    max="5"
-                    step="0.1"
+                <div className="relative">
+                  <select
                     value={form.rating}
                     onChange={handleChange('rating')}
-                    placeholder="4.5"
-                  />
-                </div>
-                {errors.rating && <p className="field-error">{errors.rating}</p>}
-              </label>
-
-              <label className="form-field form-full">
-                <span>Notes</span>
-                <div className="textarea-wrapper">
-                  <StickyNote size={16} />
-                  <textarea
-                    value={form.notes}
-                    onChange={handleChange('notes')}
-                    placeholder="Payment terms, preferred products, delivery windows..."
-                  />
-                </div>
-              </label>
-            </div>
-
-            {/* Temporary Products Section */}
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold mb-3">Temporary Products</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Add new products for this supplier. These will only be saved to inventory when you create a purchase order.
-              </p>
-              
-              {/* Add New Product Form */}
-              <div className="border border-gray-200 rounded-lg p-4 mb-4">
-                <h4 className="font-medium mb-3">Add New Product</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Input
-                    placeholder="Product Name *"
-                    value={newProduct.name}
-                    onChange={handleNewProductChange('name')}
-                  />
-                  <Input
-                    placeholder="SKU"
-                    value={newProduct.sku}
-                    onChange={handleNewProductChange('sku')}
-                  />
-                  <Input
-                    placeholder="Selling Price"
-                    type="number"
-                    value={newProduct.price}
-                    onChange={handleNewProductChange('price')}
-                  />
-                  <Input
-                    placeholder="Cost Price"
-                    type="number"
-                    value={newProduct.cost}
-                    onChange={handleNewProductChange('cost')}
-                  />
-                </div>
-                <Input
-                  placeholder="Description"
-                  className="mt-3"
-                  value={newProduct.description}
-                  onChange={handleNewProductChange('description')}
-                />
-                <Button 
-                  type="button" 
-                  className="mt-3 w-full md:w-auto"
-                  onClick={handleAddTempProduct}
-                >
-                  <Plus size={16} className="mr-1" />
-                  Add Product
-                </Button>
-              </div>
-              
-              {/* Temporary Products List */}
-              {tempProducts.length > 0 && (
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <h4 className="font-medium mb-3">Temporary Products ({tempProducts.length})</h4>
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {tempProducts.map((product) => (
-                      <div key={product.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                        <div>
-                          <div className="font-medium">{product.name}</div>
-                          <div className="text-sm text-gray-600">
-                            {product.sku && `SKU: ${product.sku} | `}
-                            Price: ₹{Number(product.price || 0).toFixed(2)} | 
-                            Cost: ₹{Number(product.cost || 0).toFixed(2)}
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          className="text-red-500 hover:text-red-700"
-                          onClick={() => handleRemoveTempProduct(product.id)}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+                    className="form-select"
+                  >
+                    <option value="">No rating</option>
+                    {[1, 2, 3, 4, 5].map(num => (
+                      <option key={num} value={num}>{num} Star{num > 1 ? 's' : ''}</option>
                     ))}
-                  </div>
+                  </select>
+                  <Star className="absolute right-3 top-3 w-4 h-4 text-yellow-500" />
                 </div>
-              )}
+              </label>
             </div>
+
+            <label className="form-field">
+              <span>Notes</span>
+              <textarea
+                rows={3}
+                value={form.notes}
+                onChange={handleChange('notes')}
+                placeholder="Additional notes about this supplier..."
+                className="form-textarea"
+              />
+            </label>
 
             <div className="modal-actions">
-              <Button variant="outline" type="button" onClick={handleClose}>
+              <button type="button" className="btn-secondary" onClick={handleClose}>
                 Cancel
-              </Button>
+              </button>
               <Button type="submit" disabled={loading}>
                 {loading ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </form>
+
+          {/* Temporary Products Section */}
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold mb-3">Supplier Products</h3>
+            
+            {/* Info box explaining how this works */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <div className="flex items-start gap-3">
+                <Info className="text-blue-500 mt-0.5 flex-shrink-0" size={20} />
+                <div>
+                  <h4 className="font-medium text-blue-800">How Product Creation Works</h4>
+                  <p className="text-blue-700 text-sm mt-1">
+                    Add products here that this supplier offers. When you create a purchase order for these products, 
+                    they will be automatically added to your inventory. This ensures all your products are linked to suppliers.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Add New Product Form */}
+            <div className="border border-gray-200 rounded-lg p-4 mb-4">
+              <h4 className="font-medium mb-3">Add New Product</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Input
+                  placeholder="Product Name *"
+                  value={newProduct.name}
+                  onChange={handleNewProductChange('name')}
+                />
+                <Input
+                  placeholder="SKU"
+                  value={newProduct.sku}
+                  onChange={handleNewProductChange('sku')}
+                />
+                <Input
+                  placeholder="Selling Price"
+                  type="number"
+                  value={newProduct.price}
+                  onChange={handleNewProductChange('price')}
+                />
+                <Input
+                  placeholder="Cost Price"
+                  type="number"
+                  value={newProduct.cost}
+                  onChange={handleNewProductChange('cost')}
+                />
+              </div>
+              <Input
+                placeholder="Description"
+                className="mt-3"
+                value={newProduct.description}
+                onChange={handleNewProductChange('description')}
+              />
+              <Button 
+                type="button" 
+                className="mt-3 w-full md:w-auto"
+                onClick={handleAddTempProduct}
+              >
+                <Plus size={16} className="mr-1" />
+                Add Product
+              </Button>
+            </div>
+            
+            {/* Temporary Products List */}
+            {tempProducts.length > 0 && (
+              <div className="border border-gray-200 rounded-lg p-4">
+                <h4 className="font-medium mb-3">Supplier Products ({tempProducts.length})</h4>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {tempProducts.map((product) => (
+                    <div key={product.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{product.name}</div>
+                        <div className="text-sm text-gray-600 truncate">
+                          {product.sku && `SKU: ${product.sku} | `}
+                          Price: ₹{product.price.toFixed(2)} | Cost: ₹{product.cost.toFixed(2)}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="text-red-500 hover:text-red-700 p-1"
+                        onClick={() => handleRemoveTempProduct(product.id)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

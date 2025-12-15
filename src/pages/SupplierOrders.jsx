@@ -4,7 +4,7 @@ import { useCache } from '../hooks/useCache'
 import { productsService } from '../services/products.service'
 import { suppliersService } from '../services/suppliers.service'
 import { ordersService } from '../services/orders.service'
-import { Package, Truck, AlertCircle, Plus, Phone, Mail, MapPin, Calendar, CheckCircle, Trash2, Edit } from 'lucide-react'
+import { Package, Truck, AlertCircle, Plus, Phone, Mail, MapPin, Calendar, CheckCircle, Trash2, Edit, Info } from 'lucide-react'
 import CreateOrderModal from '../components/CreateOrderModal'
 import AddSupplierModal from '../components/AddSupplierModal'
 import EditSupplierModal from '../components/EditSupplierModal'
@@ -12,6 +12,7 @@ import DeleteSupplierModal from '../components/DeleteSupplierModal'
 import { toast } from 'react-hot-toast'
 import { downloadPurchaseOrderPdf } from '../utils/purchaseOrderPdf'
 import { formatCurrency } from '../utils/currency'
+import Card from '../components/ui/Card'
 
 function StatCard({ icon: Icon, label, value, color }) {
     return (
@@ -59,203 +60,101 @@ function SupplierCard({ supplier, onRefresh }) {
                         <span>{supplier.address || 'No address'}</span>
                     </div>
                 </div>
-                <div className="mt-4 flex gap-2 flex-wrap">
-                    <button 
-                        className="btn-secondary flex-1 flex items-center justify-center gap-1"
-                        onClick={() => setShowEditModal(true)}
-                    >
+                <div className="supplier-actions">
+                    <button className="btn-secondary" onClick={() => setShowEditModal(true)}>
                         <Edit size={16} />
-                        Edit
+                        Manage
                     </button>
-                    <button 
-                        className="btn-danger flex-1 flex items-center justify-center gap-1"
-                        onClick={() => setShowDeleteModal(true)}
-                    >
+                    <button className="btn-danger" onClick={() => setShowDeleteModal(true)}>
                         <Trash2 size={16} />
                         Delete
                     </button>
                 </div>
             </div>
-            
-            <EditSupplierModal
-                isOpen={showEditModal}
-                onClose={() => setShowEditModal(false)}
-                supplier={supplier}
-                onSuccess={() => {
-                    toast.success('Supplier updated successfully')
-                    onRefresh?.()
-                }}
-            />
-            
-            <DeleteSupplierModal
-                isOpen={showDeleteModal}
-                onClose={() => setShowDeleteModal(false)}
-                supplier={supplier}
-                onSuccess={() => {
-                    toast.success('Supplier deleted successfully')
-                    onRefresh?.()
-                }}
-            />
+
+            {showEditModal && (
+                <EditSupplierModal
+                    isOpen={showEditModal}
+                    onClose={() => setShowEditModal(false)}
+                    supplier={supplier}
+                    onSuccess={() => {
+                        onRefresh?.()
+                        setShowEditModal(false)
+                    }}
+                />
+            )}
+
+            {showDeleteModal && (
+                <DeleteSupplierModal
+                    isOpen={showDeleteModal}
+                    onClose={() => setShowDeleteModal(false)}
+                    supplier={supplier}
+                    onSuccess={() => {
+                        onRefresh?.()
+                        setShowDeleteModal(false)
+                    }}
+                />
+            )}
         </>
     )
 }
 
-function OrderRow({ order, onMarkDelivered, onDownloadPdf }) {
-    const [loading, setLoading] = useState(false)
-    const [downloading, setDownloading] = useState(false)
-
+// Order Item Row Component
+function OrderItemRow({ order, onMarkDelivered, onDownloadPdf }) {
     const statusColors = {
-        pending: 'status-pending',
-        shipped: 'status-shipped',
-        delivered: 'status-delivered',
-        delayed: 'status-delayed',
-        cancelled: 'status-delayed'
+        pending: 'bg-yellow-100 text-yellow-800',
+        shipped: 'bg-blue-100 text-blue-800',
+        delivered: 'bg-green-100 text-green-800',
+        cancelled: 'bg-red-100 text-red-800',
+        delayed: 'bg-orange-100 text-orange-800'
     }
 
-    const handleDownloadPdf = async () => {
-        if (!onDownloadPdf) return
-        setDownloading(true)
-        try {
-            await onDownloadPdf(order.id)
-        } catch (err) {
-            console.error('Error downloading PDF:', err)
-        } finally {
-            setDownloading(false)
-        }
-    }
-
-    const statusIcons = {
-        pending: AlertCircle,
-        shipped: Truck,
-        delivered: CheckCircle,
-        delayed: AlertCircle,
-        cancelled: AlertCircle
-    }
-
-    const StatusIcon = statusIcons[order.status] || AlertCircle
-    const isDelayed = order.status === 'delayed' || (order.expected_delivery && new Date(order.expected_delivery) < new Date() && order.status !== 'delivered')
-
-    const handleMarkDelivered = async () => {
-        if (window.confirm(`Mark order ${order.order_number} as delivered? This will add all items to inventory and create transactions.`)) {
-            setLoading(true)
-            try {
-                await onMarkDelivered(order.id)
-            } catch (err) {
-                console.error('Error marking as delivered:', err)
-            } finally {
-                setLoading(false)
-            }
-        }
-    }
-
-    // Mobile-friendly order row
     return (
         <>
-            {/* Desktop view */}
-            <tr className="order-row hidden md:table-row">
-                <td className="order-cell">
-                    <div className="order-number">{order.order_number}</div>
-                    <div className="order-date">{new Date(order.order_date || order.created_at).toLocaleDateString()}</div>
+            <tr className="hover:bg-gray-50">
+                <td className="px-4 py-3">
+                    <div className="font-medium">{order.order_number}</div>
+                    <div className="text-sm text-gray-500">{new Date(order.created_at).toLocaleDateString()}</div>
                 </td>
-                <td className="order-cell">{order.supplier?.name || 'Unknown'}</td>
-                <td className="order-cell">{order.items_count || 0} items</td>
-                <td className="order-cell">{formatCurrency(order.total_value || 0, { maximumFractionDigits: 0 })}</td>
-                <td className="order-cell">
-                    <span className={`status-badge ${statusColors[order.status]}`}>
-                        <StatusIcon size={14} />
-                        {order.status}
-                    </span>
+                <td className="px-4 py-3">
+                    <div className="font-medium">{order.supplier?.name || 'Unknown Supplier'}</div>
+                    <div className="text-sm text-gray-500">{order.supplier?.contact_person || ''}</div>
                 </td>
-                <td className="order-cell">
-                    <div className="delivery-info">
-                        <Calendar size={14} />
-                        <span className={isDelayed ? 'text-red-600' : ''}>
-                            {order.expected_delivery ? new Date(order.expected_delivery).toLocaleDateString() : 'N/A'}
-                        </span>
+                <td className="px-4 py-3">
+                    <div className="text-sm">
+                        {order.items_count} items
+                    </div>
+                    <div className="text-sm text-gray-500">
+                        {formatCurrency(order.total_value || 0)}
                     </div>
                 </td>
-                <td className="order-cell">
-                    <div className="flex gap-2">
+                <td className="px-4 py-3">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[order.status] || 'bg-gray-100 text-gray-800'}`}>
+                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                    </span>
+                    {order.expected_delivery && (
+                        <div className="text-sm text-gray-500 mt-1 flex items-center">
+                            <Calendar size={14} className="mr-1" />
+                            {new Date(order.expected_delivery).toLocaleDateString()}
+                        </div>
+                    )}
+                </td>
+                <td className="px-4 py-3">
+                    <div className="flex space-x-2">
+                        <button
+                            onClick={() => onDownloadPdf(order)}
+                            className="btn-secondary text-sm px-3 py-1"
+                        >
+                            PDF
+                        </button>
                         {order.status !== 'delivered' && order.status !== 'cancelled' && (
                             <button
-                                className="btn-action"
-                                onClick={handleMarkDelivered}
-                                disabled={loading}
+                                onClick={() => onMarkDelivered(order.id)}
+                                className="btn-primary text-sm px-3 py-1"
                             >
-                                {loading ? 'Processing...' : 'Mark Delivered'}
+                                Mark Delivered
                             </button>
                         )}
-                        {order.status === 'delivered' && (
-                            <span className="text-green-600 text-sm">✓ Delivered</span>
-                        )}
-                        <button
-                            className="btn-secondary"
-                            onClick={handleDownloadPdf}
-                            disabled={downloading}
-                        >
-                            {downloading ? 'Preparing...' : 'Download PDF'}
-                        </button>
-                    </div>
-                </td>
-            </tr>
-            
-            {/* Mobile view */}
-            <tr className="order-row md:hidden border-b border-gray-200">
-                <td className="p-4" colSpan="7">
-                    <div className="flex flex-col gap-3">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <div className="font-bold text-lg">{order.order_number}</div>
-                                <div className="text-sm text-gray-500">{new Date(order.order_date || order.created_at).toLocaleDateString()}</div>
-                            </div>
-                            <span className={`status-badge ${statusColors[order.status]}`}>
-                                <StatusIcon size={14} />
-                                {order.status}
-                            </span>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                            <div>
-                                <div className="text-gray-500">Supplier</div>
-                                <div>{order.supplier?.name || 'Unknown'}</div>
-                            </div>
-                            <div>
-                                <div className="text-gray-500">Items</div>
-                                <div>{order.items_count || 0} items</div>
-                            </div>
-                            <div>
-                                <div className="text-gray-500">Total</div>
-                                <div>{formatCurrency(order.total_value || 0, { maximumFractionDigits: 0 })}</div>
-                            </div>
-                            <div>
-                                <div className="text-gray-500">Delivery</div>
-                                <div className={isDelayed ? 'text-red-600' : ''}>
-                                    {order.expected_delivery ? new Date(order.expected_delivery).toLocaleDateString() : 'N/A'}
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div className="flex flex-wrap gap-2 pt-2">
-                            {order.status !== 'delivered' && order.status !== 'cancelled' && (
-                                <button
-                                    className="btn-action flex-1"
-                                    onClick={handleMarkDelivered}
-                                    disabled={loading}
-                                >
-                                    {loading ? 'Processing...' : 'Mark Delivered'}
-                                </button>
-                            )}
-                            {order.status === 'delivered' && (
-                                <span className="text-green-600 text-sm">✓ Delivered</span>
-                            )}
-                            <button
-                                className="btn-secondary flex-1"
-                                onClick={handleDownloadPdf}
-                                disabled={downloading}
-                            >
-                                {downloading ? 'Preparing...' : 'Download PDF'}
-                            </button>
-                        </div>
                     </div>
                 </td>
             </tr>
@@ -329,100 +228,80 @@ export default function SupplierOrders() {
             lowStockItems: lowStockItems.length,
             delayedOrders
         }
-    }, [suppliersList, ordersList, lowStockItems])
+    }, [suppliersList.length, ordersList, lowStockItems.length])
 
     const handleMarkAsDelivered = async (orderId) => {
+        if (!window.confirm('This will add all items to inventory and create transactions. Are you sure?')) return
+        
         try {
-            await ordersService.markAsDelivered(orderId)
+            const result = await ordersService.markAsDelivered(orderId)
+            toast.success(result.message)
             await refreshOrders?.()
-            toast.success('Order marked as delivered')
         } catch (err) {
             console.error('Error marking order as delivered:', err)
-            toast.error('Failed to mark order as delivered')
+            toast.error(err.message || 'Failed to mark order as delivered')
         }
     }
 
-    const handleDownloadPdf = async (orderId) => {
+    const handleDownloadPdf = async (order) => {
         try {
-            const order = await ordersService.getById(orderId)
-            if (!order) throw new Error('Order not found')
             await downloadPurchaseOrderPdf(order)
+            toast.success('Purchase order downloaded')
         } catch (err) {
             console.error('Error downloading PDF:', err)
-            toast.error('Failed to download PDF')
+            toast.error('Failed to download purchase order')
         }
     }
 
     const handleAutoGenerateOrders = async () => {
-        if (actionableLowStock.length === 0) {
-            toast.error('No actionable low-stock items found')
-            return
-        }
-
-        // Group items by supplier
-        const grouped = actionableLowStock.reduce((acc, product) => {
-            const key = (product.supplier || '').trim().toLowerCase()
-            const supplier = supplierLookup[key]
-            if (!supplier) return acc
-
-            if (!acc[supplier.id]) {
-                acc[supplier.id] = {
-                    supplier,
-                    items: []
-                }
-            }
-
-            // Calculate quantity to order (reorder to max_stock_level)
-            const currentQty = Number(product.quantity || 0)
-            const maxLevel = Number(product.max_stock_level || 0)
-            const quantity = Math.max(0, maxLevel - currentQty)
-            const unitPrice = Number(product.cost || 0)
-
-            acc[supplier.id].items.push({
-                product_id: product.id,
-                product_name: product.name,
-                quantity,
-                unit_price: unitPrice
-            })
-
-            return acc
-        }, {})
-
-        const supplierIds = Object.keys(grouped)
-        if (supplierIds.length === 0) {
-            toast.error('No low-stock items have a matching supplier. Set supplier name on products first.')
-            return
-        }
-
+        if (actionableLowStock.length === 0) return
+        
+        if (!window.confirm(`This will generate ${actionableLowStock.length} purchase order(s). Continue?`)) return
+        
         setAutoGenerating(true)
-        setAutoSummary(null)
-
         try {
+            // Group items by supplier
+            const supplierGroups = actionableLowStock.reduce((acc, product) => {
+                const supplierKey = (product.supplier || '').trim().toLowerCase()
+                const supplier = supplierLookup[supplierKey]
+                
+                if (!supplier) return acc
+                
+                if (!acc[supplier.id]) {
+                    acc[supplier.id] = {
+                        supplier,
+                        items: []
+                    }
+                }
+                
+                acc[supplier.id].items.push({
+                    product_id: product.id,
+                    product_name: product.name,
+                    quantity: Math.max(
+                        (product.max_stock_level || 0) - (product.quantity || 0),
+                        10 // Minimum order quantity
+                    ),
+                    unit_price: product.cost || product.price || 0
+                })
+                
+                return acc
+            }, {})
+
+            // Create purchase orders for each supplier
             const createdOrders = []
-            const defaultLeadTimeDays = 7
-
-            for (const supplierId of supplierIds) {
-                const group = grouped[supplierId]
-                const expectedDeliveryDate = new Date()
-                expectedDeliveryDate.setDate(expectedDeliveryDate.getDate() + defaultLeadTimeDays)
-
-                const orderPayload = {
+            for (const [supplierId, group] of Object.entries(supplierGroups)) {
+                const orderData = {
                     order_number: ordersService.generateOrderNumber(),
-                    supplier_id: supplierId,
+                    supplier_id: group.supplier.id,
                     status: 'pending',
                     items_count: group.items.length,
-                    total_value: 0,
+                    total_value: group.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0),
                     order_date: new Date().toISOString().split('T')[0],
-                    expected_delivery: expectedDeliveryDate.toISOString().split('T')[0],
-                    notes: 'Auto-generated from low stock automation'
+                    notes: 'Auto-generated order for low stock items'
                 }
 
-                // Calculate total value
-                orderPayload.total_value = group.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0)
-
-                // Create order
-                const order = await ordersService.create(orderPayload)
-
+                const order = await ordersService.create(orderData)
+                
                 // Create order items
                 for (const item of group.items) {
                     await ordersService.createOrderItem({
@@ -471,6 +350,20 @@ export default function SupplierOrders() {
                     </div>
                 </div>
 
+                {/* Notice about product creation */}
+                <Card className="p-4 bg-blue-50 border border-blue-200 mb-6">
+                    <div className="flex items-start gap-3">
+                        <Info className="text-blue-500 mt-0.5 flex-shrink-0" size={20} />
+                        <div>
+                            <h3 className="font-medium text-blue-800">Product Creation</h3>
+                            <p className="text-blue-700 text-sm mt-1">
+                                This is where you create and manage products. Add new suppliers and define their products here. 
+                                When you create a purchase order for a new product, it will be added to your inventory.
+                            </p>
+                        </div>
+                    </div>
+                </Card>
+
                 {/* Stats - Responsive grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     <StatCard icon={Package} label="Total Suppliers" value={stats.totalSuppliers} color="icon-purple" />
@@ -510,43 +403,27 @@ export default function SupplierOrders() {
                                 <Package size={48} className="text-gray-300 mb-3" />
                                 <h3>No purchase orders yet</h3>
                                 <p>Create your first purchase order to get started.</p>
-                                <button className="btn-primary mt-2" onClick={() => setShowCreateModal(true)}>
+                                <button className="btn-primary mt-3" onClick={() => setShowCreateModal(true)}>
                                     <Plus size={18} />
                                     Create Purchase Order
                                 </button>
                             </div>
                         ) : (
                             <div className="overflow-x-auto">
-                                <div className="hidden md:block">
-                                    <table className="data-table">
-                                        <thead>
+                                <div className="rounded-xl border border-gray-200 overflow-hidden">
+                                    <table className="min-w-full">
+                                        <thead className="bg-gray-50">
                                             <tr>
-                                                <th>Order #</th>
-                                                <th>Supplier</th>
-                                                <th>Items</th>
-                                                <th>Total</th>
-                                                <th>Status</th>
-                                                <th>Delivery Date</th>
-                                                <th>Actions</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                             </tr>
                                         </thead>
-                                        <tbody>
-                                            {ordersList.map((order) => (
-                                                <OrderRow
-                                                    key={order.id}
-                                                    order={order}
-                                                    onMarkDelivered={handleMarkAsDelivered}
-                                                    onDownloadPdf={handleDownloadPdf}
-                                                />
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div className="md:hidden">
-                                    <table className="data-table">
-                                        <tbody>
-                                            {ordersList.map((order) => (
-                                                <OrderRow
+                                        <tbody className="divide-y divide-gray-200">
+                                            {ordersList.map(order => (
+                                                <OrderItemRow
                                                     key={order.id}
                                                     order={order}
                                                     onMarkDelivered={handleMarkAsDelivered}

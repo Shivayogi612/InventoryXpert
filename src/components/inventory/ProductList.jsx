@@ -120,7 +120,7 @@ export default function ProductList() {
             <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by name, SKU or barcode" className="pl-9" />
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
           </div>
-          <Button onClick={() => setEditing({})} className="whitespace-nowrap">Add Product</Button>
+          {/* Removed Add Product button - product creation moved to suppliers section */}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="w-4 h-4" /></Button>
