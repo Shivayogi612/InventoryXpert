@@ -18,6 +18,8 @@ export default function AlertCenter({ onClose }) {
     setMarking(true)
     try {
       await markAllRead()
+      // Close the alert center after marking all as read
+      onClose()
     } catch (err) {
       console.error('mark all failed', err)
     } finally {
@@ -59,9 +61,21 @@ export default function AlertCenter({ onClose }) {
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <button className="text-xs text-primary-600" onClick={() => acknowledge(a.id)}>Acknowledge</button>
-                  <button className="text-xs text-green-600" onClick={() => resolve(a.id)}>Resolve</button>
-                  <button className="text-xs text-gray-500" onClick={() => dismiss(a.id)}>Dismiss</button>
+                  <button className="text-xs text-primary-600" onClick={() => {
+                    acknowledge(a.id)
+                    // Close the alert center after acknowledging
+                    onClose()
+                  }}>Acknowledge</button>
+                  <button className="text-xs text-green-600" onClick={() => {
+                    resolve(a.id)
+                    // Close the alert center after resolving
+                    onClose()
+                  }}>Resolve</button>
+                  <button className="text-xs text-gray-500" onClick={() => {
+                    dismiss(a.id)
+                    // Close the alert center after dismissing
+                    onClose()
+                  }}>Dismiss</button>
                 </div>
               </div>
             </div>

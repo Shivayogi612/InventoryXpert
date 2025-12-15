@@ -17,10 +17,9 @@ export function useAlerts() {
     const load = async () => {
       setLoading(true)
       try {
-        // try cache first
-        const cached = await cacheService.get('alerts')
-        if (mounted && cached) setAlerts(cached)
-
+        // Clear cache on load to ensure we get fresh data
+        await cacheService.clear('alerts')
+        
         const fresh = await alertsService.getActiveAlerts()
         // enrich with product names
         const products = (await cacheService.get('products')) || await productsService.getAll()
@@ -52,13 +51,19 @@ export function useAlerts() {
             setAlerts((s) => [enrichedNew, ...s])
             setUnreadCount((c) => c + 1)
             cacheService.set('alerts', [enrichedNew, ...(alerts || [])])
-            toast('New alert: ' + (payload.title || 'Alert'), { icon: '⚠️' })
           } else if (event === 'UPDATE') {
             const updated = { ...payload, product_name: prodMap.get(payload.product_id)?.name || null }
-            setAlerts((s) => s.map((a) => (a.id === payload.id ? updated : a)))
-            cacheService.set('alerts', alerts.map((a) => (a.id === payload.id ? updated : a)))
+            // If the alert is no longer active (acknowledged, resolved, dismissed), remove it from the list
+            if (payload.status !== 'active') {
+              setAlerts((s) => s.filter((a) => a.id !== payload.id))
+              setUnreadCount((c) => Math.max(0, c - 1))
+            } else {
+              setAlerts((s) => s.map((a) => (a.id === payload.id ? updated : a)))
+            }
+            cacheService.set('alerts', alerts.filter((a) => a.id !== payload.id))
           } else if (event === 'DELETE') {
             setAlerts((s) => s.filter((a) => a.id !== payload.id))
+            setUnreadCount((c) => Math.max(0, c - 1))
             cacheService.set('alerts', alerts.filter((a) => a.id !== payload.id))
           }
         })
@@ -183,12 +188,9 @@ export function useAlerts() {
       // Acknowledge all in parallel
       await Promise.all(ids.map((id) => alertsService.acknowledgeAlert(id, actor)))
       await cacheService.clear('alerts')
-      const fresh = await alertsService.getActiveAlerts()
-      const products = (await cacheService.get('products')) || await productsService.getAll()
-      const prodMap = new Map((products || []).map((p) => [p.id, p]))
-      const enriched = (fresh || []).map((a) => ({ ...a, product_name: prodMap.get(a.product_id)?.name || null }))
-      setAlerts(enriched)
-      setUnreadCount(enriched.length)
+      // After marking all as read, there should be no active alerts
+      setAlerts([])
+      setUnreadCount(0)
     } catch (err) {
       console.error('markAllRead error', err)
     }
@@ -198,4 +200,3 @@ export function useAlerts() {
 }
 
 export default useAlerts
-

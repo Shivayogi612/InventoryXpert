@@ -53,9 +53,9 @@ function SupplierCard({ supplier }) {
                     <span>{supplier.address || 'No address'}</span>
                 </div>
             </div>
-            <div className="mt-4 flex gap-2">
-                <button className="btn-secondary">Edit</button>
-                <button className="btn-secondary">View Orders</button>
+            <div className="mt-4 flex gap-2 flex-wrap">
+                <button className="btn-secondary flex-1">Edit</button>
+                <button className="btn-secondary flex-1">View Orders</button>
             </div>
         </div>
     )
@@ -109,53 +109,118 @@ function OrderRow({ order, onMarkDelivered, onDownloadPdf }) {
         }
     }
 
+    // Mobile-friendly order row
     return (
-        <tr className="order-row">
-            <td className="order-cell">
-                <div className="order-number">{order.order_number}</div>
-                <div className="order-date">{new Date(order.order_date || order.created_at).toLocaleDateString()}</div>
-            </td>
-            <td className="order-cell">{order.supplier?.name || 'Unknown'}</td>
-            <td className="order-cell">{order.items_count || 0} items</td>
-            <td className="order-cell">{formatCurrency(order.total_value || 0, { maximumFractionDigits: 0 })}</td>
-            <td className="order-cell">
-                <span className={`status-badge ${statusColors[order.status]}`}>
-                    <StatusIcon size={14} />
-                    {order.status}
-                </span>
-            </td>
-            <td className="order-cell">
-                <div className="delivery-info">
-                    <Calendar size={14} />
-                    <span className={isDelayed ? 'text-red-600' : ''}>
-                        {order.expected_delivery ? new Date(order.expected_delivery).toLocaleDateString() : 'N/A'}
+        <>
+            {/* Desktop view */}
+            <tr className="order-row hidden md:table-row">
+                <td className="order-cell">
+                    <div className="order-number">{order.order_number}</div>
+                    <div className="order-date">{new Date(order.order_date || order.created_at).toLocaleDateString()}</div>
+                </td>
+                <td className="order-cell">{order.supplier?.name || 'Unknown'}</td>
+                <td className="order-cell">{order.items_count || 0} items</td>
+                <td className="order-cell">{formatCurrency(order.total_value || 0, { maximumFractionDigits: 0 })}</td>
+                <td className="order-cell">
+                    <span className={`status-badge ${statusColors[order.status]}`}>
+                        <StatusIcon size={14} />
+                        {order.status}
                     </span>
-                </div>
-            </td>
-            <td className="order-cell">
-                <div className="flex gap-2">
-                    {order.status !== 'delivered' && order.status !== 'cancelled' && (
+                </td>
+                <td className="order-cell">
+                    <div className="delivery-info">
+                        <Calendar size={14} />
+                        <span className={isDelayed ? 'text-red-600' : ''}>
+                            {order.expected_delivery ? new Date(order.expected_delivery).toLocaleDateString() : 'N/A'}
+                        </span>
+                    </div>
+                </td>
+                <td className="order-cell">
+                    <div className="flex gap-2">
+                        {order.status !== 'delivered' && order.status !== 'cancelled' && (
+                            <button
+                                className="btn-action"
+                                onClick={handleMarkDelivered}
+                                disabled={loading}
+                            >
+                                {loading ? 'Processing...' : 'Mark Delivered'}
+                            </button>
+                        )}
+                        {order.status === 'delivered' && (
+                            <span className="text-green-600 text-sm">✓ Delivered</span>
+                        )}
                         <button
-                            className="btn-action"
-                            onClick={handleMarkDelivered}
-                            disabled={loading}
+                            className="btn-secondary"
+                            onClick={handleDownloadPdf}
+                            disabled={downloading}
                         >
-                            {loading ? 'Processing...' : 'Mark Delivered'}
+                            {downloading ? 'Preparing...' : 'Download PDF'}
                         </button>
-                    )}
-                    {order.status === 'delivered' && (
-                        <span className="text-green-600 text-sm">✓ Delivered</span>
-                    )}
-                    <button
-                        className="btn-secondary"
-                        onClick={handleDownloadPdf}
-                        disabled={downloading}
-                    >
-                        {downloading ? 'Preparing...' : 'Download PDF'}
-                    </button>
-                </div>
-            </td>
-        </tr>
+                    </div>
+                </td>
+            </tr>
+            
+            {/* Mobile view */}
+            <tr className="order-row md:hidden border-b border-gray-200">
+                <td className="p-4" colSpan="7">
+                    <div className="flex flex-col gap-3">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <div className="font-bold text-lg">{order.order_number}</div>
+                                <div className="text-sm text-gray-500">{new Date(order.order_date || order.created_at).toLocaleDateString()}</div>
+                            </div>
+                            <span className={`status-badge ${statusColors[order.status]}`}>
+                                <StatusIcon size={14} />
+                                {order.status}
+                            </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                                <div className="text-gray-500">Supplier</div>
+                                <div>{order.supplier?.name || 'Unknown'}</div>
+                            </div>
+                            <div>
+                                <div className="text-gray-500">Items</div>
+                                <div>{order.items_count || 0} items</div>
+                            </div>
+                            <div>
+                                <div className="text-gray-500">Total</div>
+                                <div>{formatCurrency(order.total_value || 0, { maximumFractionDigits: 0 })}</div>
+                            </div>
+                            <div>
+                                <div className="text-gray-500">Delivery</div>
+                                <div className={isDelayed ? 'text-red-600' : ''}>
+                                    {order.expected_delivery ? new Date(order.expected_delivery).toLocaleDateString() : 'N/A'}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2 pt-2">
+                            {order.status !== 'delivered' && order.status !== 'cancelled' && (
+                                <button
+                                    className="btn-action flex-1"
+                                    onClick={handleMarkDelivered}
+                                    disabled={loading}
+                                >
+                                    {loading ? 'Processing...' : 'Mark Delivered'}
+                                </button>
+                            )}
+                            {order.status === 'delivered' && (
+                                <span className="text-green-600 text-sm">✓ Delivered</span>
+                            )}
+                            <button
+                                className="btn-secondary flex-1"
+                                onClick={handleDownloadPdf}
+                                disabled={downloading}
+                            >
+                                {downloading ? 'Preparing...' : 'Download PDF'}
+                            </button>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </>
     )
 }
 
@@ -359,45 +424,48 @@ export default function SupplierOrders() {
                         <h1 className="page-title">Supplier & Order Management</h1>
                         <p className="page-subtitle">Manage suppliers, track orders, and automate purchase orders</p>
                     </div>
-                    <div className="flex gap-2 flex-wrap justify-end">
+                    <div className="flex gap-2 flex-wrap justify-end mt-2">
                         <button className="btn-secondary" onClick={() => refreshOrders?.()}>
                             Refresh Orders
                         </button>
                         <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
                             <Plus size={18} />
-                            New Purchase Order
+                            <span className="hidden sm:inline ml-1">New Purchase Order</span>
+                            <span className="sm:hidden">New</span>
                         </button>
                     </div>
                 </div>
 
-                {/* Stats */}
-                <div className="metrics-grid">
+                {/* Stats - Responsive grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     <StatCard icon={Package} label="Total Suppliers" value={stats.totalSuppliers} color="icon-purple" />
                     <StatCard icon={Truck} label="Active Orders" value={stats.activeOrders} color="icon-green" />
                     <StatCard icon={AlertCircle} label="Low Stock Items" value={stats.lowStockItems} color="icon-orange" />
                     <StatCard icon={AlertCircle} label="Delayed Orders" value={stats.delayedOrders} color="icon-red" />
                 </div>
 
-                {/* Tabs */}
-                <div className="tabs-container">
-                    <button
-                        className={`tab ${activeTab === 'orders' ? 'tab-active' : ''}`}
-                        onClick={() => setActiveTab('orders')}
-                    >
-                        Purchase Orders
-                    </button>
-                    <button
-                        className={`tab ${activeTab === 'suppliers' ? 'tab-active' : ''}`}
-                        onClick={() => setActiveTab('suppliers')}
-                    >
-                        Suppliers
-                    </button>
-                    <button
-                        className={`tab ${activeTab === 'auto-orders' ? 'tab-active' : ''}`}
-                        onClick={() => setActiveTab('auto-orders')}
-                    >
-                        Auto-Generate Orders
-                    </button>
+                {/* Tabs - Scrollable on mobile */}
+                <div className="tabs-container overflow-x-auto pb-2 mb-4">
+                    <div className="flex min-w-max">
+                        <button
+                            className={`tab ${activeTab === 'orders' ? 'tab-active' : ''}`}
+                            onClick={() => setActiveTab('orders')}
+                        >
+                            Purchase Orders
+                        </button>
+                        <button
+                            className={`tab ${activeTab === 'suppliers' ? 'tab-active' : ''}`}
+                            onClick={() => setActiveTab('suppliers')}
+                        >
+                            Suppliers
+                        </button>
+                        <button
+                            className={`tab ${activeTab === 'auto-orders' ? 'tab-active' : ''}`}
+                            onClick={() => setActiveTab('auto-orders')}
+                        >
+                            Auto-Generate Orders
+                        </button>
+                    </div>
                 </div>
 
                 {/* Content */}
@@ -412,7 +480,8 @@ export default function SupplierOrders() {
                             </div>
                         ) : (
                             <div className="table-container">
-                                <table className="orders-table">
+                                {/* Desktop table */}
+                                <table className="orders-table hidden md:table">
                                     <thead>
                                         <tr>
                                             <th>Order #</th>
@@ -435,6 +504,22 @@ export default function SupplierOrders() {
                                         ))}
                                     </tbody>
                                 </table>
+                                
+                                {/* Mobile list */}
+                                <div className="md:hidden">
+                                    <table className="w-full">
+                                        <tbody>
+                                            {ordersList.map(order => (
+                                                <OrderRow
+                                                    key={order.id}
+                                                    order={order}
+                                                    onMarkDelivered={handleMarkDelivered}
+                                                    onDownloadPdf={handleDownloadPdf}
+                                                />
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -537,7 +622,7 @@ export default function SupplierOrders() {
                                         </div>
                                     )}
                                     <button
-                                        className="btn-primary w-full md:w-auto"
+                                        className="btn-primary w-full"
                                         disabled={autoGenerating || actionableLowStock.length === 0}
                                         onClick={handleAutoGenerateOrders}
                                     >
