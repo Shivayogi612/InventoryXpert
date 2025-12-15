@@ -4,9 +4,10 @@ import { useCache } from '../hooks/useCache'
 import { productsService } from '../services/products.service'
 import { suppliersService } from '../services/suppliers.service'
 import { ordersService } from '../services/orders.service'
-import { Package, Truck, AlertCircle, Plus, Phone, Mail, MapPin, Calendar, CheckCircle } from 'lucide-react'
+import { Package, Truck, AlertCircle, Plus, Phone, Mail, MapPin, Calendar, CheckCircle, Trash2, Edit } from 'lucide-react'
 import CreateOrderModal from '../components/CreateOrderModal'
 import AddSupplierModal from '../components/AddSupplierModal'
+import DeleteSupplierModal from '../components/DeleteSupplierModal'
 import { toast } from 'react-hot-toast'
 import { downloadPurchaseOrderPdf } from '../utils/purchaseOrderPdf'
 import { formatCurrency } from '../utils/currency'
@@ -27,37 +28,60 @@ function StatCard({ icon: Icon, label, value, color }) {
     )
 }
 
-function SupplierCard({ supplier }) {
+function SupplierCard({ supplier, onRefresh }) {
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
+    
     return (
-        <div className="supplier-card">
-            <div className="flex items-start justify-between mb-3">
-                <div>
-                    <h3 className="supplier-name">{supplier.name}</h3>
-                    <p className="supplier-contact">{supplier.contact_person || 'No contact'}</p>
+        <>
+            <div className="supplier-card">
+                <div className="flex items-start justify-between mb-3">
+                    <div>
+                        <h3 className="supplier-name">{supplier.name}</h3>
+                        <p className="supplier-contact">{supplier.contact_person || 'No contact'}</p>
+                    </div>
+                    <div className="supplier-rating">
+                        ⭐ {supplier.rating || 0}
+                    </div>
                 </div>
-                <div className="supplier-rating">
-                    ⭐ {supplier.rating || 0}
+                <div className="supplier-details">
+                    <div className="detail-item">
+                        <Mail size={14} />
+                        <span>{supplier.email || 'No email'}</span>
+                    </div>
+                    <div className="detail-item">
+                        <Phone size={14} />
+                        <span>{supplier.phone || 'No phone'}</span>
+                    </div>
+                    <div className="detail-item">
+                        <MapPin size={14} />
+                        <span>{supplier.address || 'No address'}</span>
+                    </div>
+                </div>
+                <div className="mt-4 flex gap-2 flex-wrap">
+                    <button className="btn-secondary flex-1 flex items-center justify-center gap-1">
+                        <Edit size={16} />
+                        Edit
+                    </button>
+                    <button 
+                        className="btn-danger flex-1 flex items-center justify-center gap-1"
+                        onClick={() => setShowDeleteModal(true)}
+                    >
+                        <Trash2 size={16} />
+                        Delete
+                    </button>
                 </div>
             </div>
-            <div className="supplier-details">
-                <div className="detail-item">
-                    <Mail size={14} />
-                    <span>{supplier.email || 'No email'}</span>
-                </div>
-                <div className="detail-item">
-                    <Phone size={14} />
-                    <span>{supplier.phone || 'No phone'}</span>
-                </div>
-                <div className="detail-item">
-                    <MapPin size={14} />
-                    <span>{supplier.address || 'No address'}</span>
-                </div>
-            </div>
-            <div className="mt-4 flex gap-2 flex-wrap">
-                <button className="btn-secondary flex-1">Edit</button>
-                <button className="btn-secondary flex-1">View Orders</button>
-            </div>
-        </div>
+            
+            <DeleteSupplierModal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                supplier={supplier}
+                onSuccess={() => {
+                    toast.success('Supplier deleted successfully')
+                    onRefresh?.()
+                }}
+            />
+        </>
     )
 }
 
@@ -292,28 +316,39 @@ export default function SupplierOrders() {
         }
     }, [suppliersList, ordersList, lowStockItems])
 
-    const calculateAutoQuantity = (product) => {
-        const reorder = Number(product?.reorder_level) || 5
-        const current = Number(product?.quantity) || 0
-        const target = Math.max(reorder * 2, reorder + 5)
-        const qty = Math.max(target - current, reorder || 5)
-        return qty
+    const handleMarkAsDelivered = async (orderId) => {
+        try {
+            await ordersService.markAsDelivered(orderId)
+            await refreshOrders?.()
+            toast.success('Order marked as delivered')
+        } catch (err) {
+            console.error('Error marking order as delivered:', err)
+            toast.error('Failed to mark order as delivered')
+        }
+    }
+
+    const handleDownloadPdf = async (orderId) => {
+        try {
+            const order = await ordersService.getById(orderId)
+            if (!order) throw new Error('Order not found')
+            await downloadPurchaseOrderPdf(order)
+        } catch (err) {
+            console.error('Error downloading PDF:', err)
+            toast.error('Failed to download PDF')
+        }
     }
 
     const handleAutoGenerateOrders = async () => {
-        if (autoGenerating) return
+        if (actionableLowStock.length === 0) {
+            toast.error('No actionable low-stock items found')
+            return
+        }
 
-        const unmatchedProducts = []
+        // Group items by supplier
         const grouped = actionableLowStock.reduce((acc, product) => {
             const key = (product.supplier || '').trim().toLowerCase()
             const supplier = supplierLookup[key]
-            if (!supplier) {
-                unmatchedProducts.push(product)
-                return acc
-            }
-
-            const quantity = calculateAutoQuantity(product)
-            const unitPrice = Number(product.cost || product.price || 0)
+            if (!supplier) return acc
 
             if (!acc[supplier.id]) {
                 acc[supplier.id] = {
@@ -321,6 +356,12 @@ export default function SupplierOrders() {
                     items: []
                 }
             }
+
+            // Calculate quantity to order (reorder to max_stock_level)
+            const currentQty = Number(product.quantity || 0)
+            const maxLevel = Number(product.max_stock_level || 0)
+            const quantity = Math.max(0, maxLevel - currentQty)
+            const unitPrice = Number(product.cost || 0)
 
             acc[supplier.id].items.push({
                 product_id: product.id,
@@ -361,70 +402,49 @@ export default function SupplierOrders() {
                     notes: 'Auto-generated from low stock automation'
                 }
 
+                // Calculate total value
+                orderPayload.total_value = group.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0)
+
+                // Create order
                 const order = await ordersService.create(orderPayload)
+
+                // Create order items
                 for (const item of group.items) {
-                    await ordersService.addOrderItem(order.id, item)
+                    await ordersService.createOrderItem({
+                        order_id: order.id,
+                        product_id: item.product_id,
+                        product_name: item.product_name,
+                        quantity: item.quantity,
+                        unit_price: item.unit_price
+                    })
                 }
 
                 createdOrders.push({
-                    supplier: group.supplier.name,
-                    orderNumber: order.order_number,
-                    items: group.items.length
+                    ...order,
+                    supplier: group.supplier
                 })
             }
 
-            toast.success(`Generated ${createdOrders.length} purchase order${createdOrders.length > 1 ? 's' : ''}`)
-            setAutoSummary({
-                createdOrders,
-                skipped: lowStockItems.length - actionableLowStock.length + unmatchedProducts.length
-            })
-
+            setAutoSummary(createdOrders)
             await refreshOrders?.()
+            toast.success(`Successfully generated ${createdOrders.length} purchase order(s)`)
         } catch (err) {
-            console.error('Auto-generate orders failed', err)
-            toast.error(err.message || 'Failed to auto-generate orders')
+            console.error('Error auto-generating orders:', err)
+            toast.error('Failed to generate purchase orders')
         } finally {
             setAutoGenerating(false)
         }
     }
 
-    // Handle marking order as delivered
-    const handleMarkDelivered = async (orderId) => {
-        try {
-            const result = await ordersService.markAsDelivered(orderId)
-            alert(result.message || 'Order marked as delivered successfully!')
-
-            // Refresh data
-            window.location.reload() // Simple refresh - you can use cache.clear() for better UX
-        } catch (err) {
-            alert(`Error: ${err.message}`)
-            throw err
-        }
-    }
-
-    const handleDownloadPdf = async (orderId) => {
-        try {
-            const order = await ordersService.getById(orderId)
-            if (!order) {
-                toast.error('Unable to find that purchase order')
-                return
-            }
-            await downloadPurchaseOrderPdf(order)
-        } catch (err) {
-            console.error('Download PDF failed', err)
-            toast.error(err.message || 'Failed to download purchase order PDF')
-        }
-    }
-
     return (
         <Layout>
-            <div className="dashboard-container">
+            <div className="page-container">
                 <div className="page-header">
                     <div>
-                        <h1 className="page-title">Supplier & Order Management</h1>
-                        <p className="page-subtitle">Manage suppliers, track orders, and automate purchase orders</p>
+                        <h1 className="page-title">Supplier Orders</h1>
+                        <p className="page-subtitle">Manage suppliers and purchase orders</p>
                     </div>
-                    <div className="flex gap-2 flex-wrap justify-end mt-2">
+                    <div className="flex gap-2">
                         <button className="btn-secondary" onClick={() => refreshOrders?.()}>
                             Refresh Orders
                         </button>
@@ -468,52 +488,53 @@ export default function SupplierOrders() {
                     </div>
                 </div>
 
-                {/* Content */}
                 {activeTab === 'orders' && (
-                    <div className="chart-card">
-                        <h3 className="chart-title mb-4">Purchase Orders</h3>
+                    <div className="card">
                         {ordersList.length === 0 ? (
                             <div className="empty-state">
-                                <Package size={48} className="text-gray-400 mb-3" />
-                                <h3 className="text-lg font-semibold mb-2">No Orders Yet</h3>
-                                <p className="text-gray-600">Create your first purchase order to get started.</p>
+                                <Package size={48} className="text-gray-300 mb-3" />
+                                <h3>No purchase orders yet</h3>
+                                <p>Create your first purchase order to get started.</p>
+                                <button className="btn-primary mt-2" onClick={() => setShowCreateModal(true)}>
+                                    <Plus size={18} />
+                                    Create Purchase Order
+                                </button>
                             </div>
                         ) : (
-                            <div className="table-container">
-                                {/* Desktop table */}
-                                <table className="orders-table hidden md:table">
-                                    <thead>
-                                        <tr>
-                                            <th>Order #</th>
-                                            <th>Supplier</th>
-                                            <th>Items</th>
-                                            <th>Total Value</th>
-                                            <th>Status</th>
-                                            <th>Expected Delivery</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {ordersList.map(order => (
-                                            <OrderRow
-                                                key={order.id}
-                                                order={order}
-                                                onMarkDelivered={handleMarkDelivered}
-                                                onDownloadPdf={handleDownloadPdf}
-                                            />
-                                        ))}
-                                    </tbody>
-                                </table>
-                                
-                                {/* Mobile list */}
-                                <div className="md:hidden">
-                                    <table className="w-full">
+                            <div className="overflow-x-auto">
+                                <div className="hidden md:block">
+                                    <table className="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Order #</th>
+                                                <th>Supplier</th>
+                                                <th>Items</th>
+                                                <th>Total</th>
+                                                <th>Status</th>
+                                                <th>Delivery Date</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
                                         <tbody>
-                                            {ordersList.map(order => (
+                                            {ordersList.map((order) => (
                                                 <OrderRow
                                                     key={order.id}
                                                     order={order}
-                                                    onMarkDelivered={handleMarkDelivered}
+                                                    onMarkDelivered={handleMarkAsDelivered}
+                                                    onDownloadPdf={handleDownloadPdf}
+                                                />
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="md:hidden">
+                                    <table className="data-table">
+                                        <tbody>
+                                            {ordersList.map((order) => (
+                                                <OrderRow
+                                                    key={order.id}
+                                                    order={order}
+                                                    onMarkDelivered={handleMarkAsDelivered}
                                                     onDownloadPdf={handleDownloadPdf}
                                                 />
                                             ))}
@@ -539,7 +560,11 @@ export default function SupplierOrders() {
                             </div>
                         )}
                         {suppliersList.map(supplier => (
-                            <SupplierCard key={supplier.id} supplier={supplier} />
+                            <SupplierCard 
+                                key={supplier.id} 
+                                supplier={supplier} 
+                                onRefresh={refreshSuppliers}
+                            />
                         ))}
                         <button
                             type="button"
@@ -568,68 +593,79 @@ export default function SupplierOrders() {
                             </div>
                         ) : (
                             <>
-                                <div className="low-stock-list">
-                                    {lowStockItems.map(product => {
-                                        const supplierKey = (product.supplier || '').trim().toLowerCase()
-                                        const supplierMatch = supplierKey && supplierLookup[supplierKey]
-                                        return (
-                                            <div key={product.id} className="low-stock-item">
-                                                <div className="flex-1">
-                                                    <div className="product-name">{product.name}</div>
-                                                    <div className="product-details">
-                                                        Current: {product.quantity} | Reorder Level: {product.reorder_level || 5}
-                                                        {product.supplier && ` | Supplier: ${product.supplier}`}
-                                                    </div>
-                                                </div>
-                                                <div className="stock-status">
-                                                    <span className="stock-badge low">Low Stock</span>
-                                                    {!supplierMatch && (
-                                                        <span className="stock-badge warning">Set supplier name</span>
-                                                    )}
-                                                </div>
-                                                <button className="btn-action" onClick={() => setShowCreateModal(true)}>
-                                                    Add to Order
-                                                </button>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                                <div className="mt-6 space-y-4">
-                                    {autoSummary && (
-                                        <div className="auto-summary-card">
-                                            <div className="auto-summary-header">
-                                                <h4>Automation Summary</h4>
-                                                <span className="text-sm text-gray-500">
-                                                    {autoSummary.createdOrders.length} order{autoSummary.createdOrders.length !== 1 && 's'} created
-                                                </span>
-                                            </div>
-                                            <div className="auto-summary-body">
-                                                {autoSummary.createdOrders.map((entry) => (
-                                                    <div key={entry.orderNumber} className="auto-summary-row">
-                                                        <div>
-                                                            <div className="font-medium">{entry.supplier}</div>
-                                                            <div className="text-xs text-gray-500">{entry.items} items</div>
-                                                        </div>
-                                                        <span className="auto-po-chip">{entry.orderNumber}</span>
-                                                    </div>
-                                                ))}
-                                                {autoSummary.skipped > 0 && (
-                                                    <p className="text-xs text-amber-600 mt-2">
-                                                        {autoSummary.skipped} item(s) skipped due to missing supplier mapping.
+                                <div className="mb-6">
+                                    <div className="overflow-x-auto">
+                                        <table className="data-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Product</th>
+                                                    <th>Current Stock</th>
+                                                    <th>Reorder Level</th>
+                                                    <th>Max Stock</th>
+                                                    <th>Supplier</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {lowStockItems.map((product) => {
+                                                    const currentQty = Number(product.quantity || 0)
+                                                    const reorderLevel = Number(product.reorder_level || 0)
+                                                    const maxStock = Number(product.max_stock_level || 0)
+                                                    const supplierKey = (product.supplier || '').trim().toLowerCase()
+                                                    const supplierMatch = supplierLookup[supplierKey]
+
+                                                    return (
+                                                        <tr key={product.id}>
+                                                            <td>
+                                                                <div className="font-medium">{product.name}</div>
+                                                                <div className="text-sm text-gray-500">{product.sku}</div>
+                                                            </td>
+                                                            <td>
+                                                                <span className={`${currentQty <= reorderLevel ? 'text-red-600 font-medium' : ''}`}>
+                                                                    {currentQty}
+                                                                </span>
+                                                            </td>
+                                                            <td>{reorderLevel}</td>
+                                                            <td>{maxStock}</td>
+                                                            <td>
+                                                                {supplierMatch ? (
+                                                                    <span className="text-green-600">{supplierMatch.name}</span>
+                                                                ) : (
+                                                                    <span className="text-orange-600">Not linked</span>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {actionableLowStock.length === 0 && (
+                                        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                            <div className="flex">
+                                                <AlertCircle className="text-yellow-500 mt-0.5 mr-2 flex-shrink-0" size={18} />
+                                                <div>
+                                                    <h4 className="font-medium text-yellow-800">No Actionable Items</h4>
+                                                    <p className="text-yellow-700 text-sm mt-1">
+                                                        Some items are low stock, but they don't have a matching supplier in your supplier list.
+                                                        Add suppliers or update product supplier names to enable auto-generation.
                                                     </p>
-                                                )}
+                                                </div>
                                             </div>
                                         </div>
                                     )}
-                                    <button
-                                        className="btn-primary w-full"
-                                        disabled={autoGenerating || actionableLowStock.length === 0}
-                                        onClick={handleAutoGenerateOrders}
-                                    >
-                                        {autoGenerating
-                                            ? 'Generating purchase orders...'
-                                            : `Generate Purchase Orders for All (${actionableLowStock.length} items)`}
-                                    </button>
+
+                                    <div className="mt-6">
+                                        <button
+                                            className="btn-primary w-full md:w-auto"
+                                            disabled={autoGenerating || actionableLowStock.length === 0}
+                                            onClick={handleAutoGenerateOrders}
+                                        >
+                                            {autoGenerating
+                                                ? 'Generating purchase orders...'
+                                                : `Generate Purchase Orders for All (${actionableLowStock.length} items)`}
+                                        </button>
+                                    </div>
                                 </div>
                             </>
                         )}
