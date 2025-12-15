@@ -85,16 +85,21 @@ export async function downloadPurchaseOrderPdf(order) {
   if (order.supplier?.phone) doc.text(`Phone: ${order.supplier.phone}`, 18, y);
 
   /* ---------------- ITEMS TABLE ---------------- */
-  const items = order.items || [];
+  // Ensure we're accessing the items correctly from the order object
+  const items = (order.items && Array.isArray(order.items)) ? order.items : [];
+  
+  if (items.length === 0) {
+    console.warn('No items found in order for PDF generation');
+  }
 
   autoTable(doc, {
     startY: 104,
     head: [["Item Description", "Qty", "Unit Price", "Amount"]],
     body: items.map((item) => [
-      item.product_name || "Unnamed Item",
+      item.product_name || item.name || "Unnamed Item",
       item.quantity || 0,
-      formatRupee(item.unit_price || 0),
-      formatRupee((item.quantity || 0) * (item.unit_price || 0)),
+      formatRupee(item.unit_price || item.price || 0),
+      formatRupee((item.quantity || 0) * (item.unit_price || item.price || 0)),
     ]),
     styles: { font: "DejaVu", fontSize: 10, cellPadding: 6 },
     headStyles: { fillColor: [220, 230, 241], textColor: 0, fontStyle: "bold" },
@@ -110,7 +115,7 @@ export async function downloadPurchaseOrderPdf(order) {
 
   /* ---------------- TOTAL BOX ---------------- */
   const tableEndY = doc.lastAutoTable.finalY;
-  const total = order.total_value || items.reduce((sum, i) => sum + (i.quantity || 0) * (i.unit_price || 0), 0);
+  const total = order.total_value || items.reduce((sum, i) => sum + (i.quantity || 0) * (i.unit_price || i.price || 0), 0);
 
   doc.setDrawColor(180);
   doc.setFillColor(235, 235, 235);
