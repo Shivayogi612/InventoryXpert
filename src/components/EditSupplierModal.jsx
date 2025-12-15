@@ -48,11 +48,25 @@ export default function EditSupplierModal({ isOpen, onClose, supplier, onSuccess
 
   const loadTempProducts = async () => {
     try {
-      // In a real implementation, you might want to load temporary products
-      // that are associated with this supplier but not yet saved to inventory
-      setTempProducts([])
+      // Load temporary products from localStorage for this supplier
+      const storedTempProducts = localStorage.getItem(`tempProducts_${supplier.id}`)
+      if (storedTempProducts) {
+        setTempProducts(JSON.parse(storedTempProducts))
+      } else {
+        setTempProducts([])
+      }
     } catch (err) {
       console.error('Error loading temp products:', err)
+      setTempProducts([])
+    }
+  }
+
+  const saveTempProducts = (products) => {
+    try {
+      // Save temporary products to localStorage for this supplier
+      localStorage.setItem(`tempProducts_${supplier.id}`, JSON.stringify(products))
+    } catch (err) {
+      console.error('Error saving temp products:', err)
     }
   }
 
@@ -123,7 +137,10 @@ export default function EditSupplierModal({ isOpen, onClose, supplier, onSuccess
       cost: Number(newProduct.cost) || 0
     }
     
-    setTempProducts(prev => [...prev, tempProduct])
+    const updatedTempProducts = [...tempProducts, tempProduct]
+    setTempProducts(updatedTempProducts)
+    saveTempProducts(updatedTempProducts)
+    
     setNewProduct({
       name: '',
       sku: '',
@@ -134,7 +151,9 @@ export default function EditSupplierModal({ isOpen, onClose, supplier, onSuccess
   }
 
   const handleRemoveTempProduct = (id) => {
-    setTempProducts(prev => prev.filter(p => p.id !== id))
+    const updatedTempProducts = tempProducts.filter(p => p.id !== id)
+    setTempProducts(updatedTempProducts)
+    saveTempProducts(updatedTempProducts)
   }
 
   const handleSubmit = async (event) => {

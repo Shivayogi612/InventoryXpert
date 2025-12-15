@@ -18,6 +18,7 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
     
     // Temporary products that will be added to inventory when order is created
     const [tempProducts, setTempProducts] = useState([])
+    const [supplierTempProducts, setSupplierTempProducts] = useState([])
 
     // Load suppliers and products
     useEffect(() => {
@@ -38,6 +39,26 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
             console.error('Error loading data:', err)
         }
     }
+
+    // Load temporary products for selected supplier
+    useEffect(() => {
+        if (selectedSupplier) {
+            try {
+                // Load temporary products from localStorage for this supplier
+                const storedTempProducts = localStorage.getItem(`tempProducts_${selectedSupplier.id}`)
+                if (storedTempProducts) {
+                    setSupplierTempProducts(JSON.parse(storedTempProducts))
+                } else {
+                    setSupplierTempProducts([])
+                }
+            } catch (err) {
+                console.error('Error loading supplier temp products:', err)
+                setSupplierTempProducts([])
+            }
+        } else {
+            setSupplierTempProducts([])
+        }
+    }, [selectedSupplier])
 
     // Filter products by selected supplier - only show products from this supplier
     const availableProducts = products.filter(p =>
@@ -70,6 +91,17 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
             unit_price: 0
         }
         setTempProducts([...tempProducts, newTempProduct])
+    }
+
+    const addSupplierTempProduct = (tempProduct) => {
+        // Convert supplier temp product to order temp product
+        const orderTempProduct = {
+            id: `order-${tempProduct.id}`,
+            product_name: tempProduct.name,
+            quantity: 1,
+            unit_price: Number(tempProduct.price) || 0
+        }
+        setTempProducts([...tempProducts, orderTempProduct])
     }
 
     const updateTempProduct = (id, field, value) => {
@@ -145,6 +177,9 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
 
             // Add temporary products to the order and save them to inventory
             for (const tempItem of tempProducts) {
+                // Check if this is a supplier temp product (has more details)
+                const isSupplierTempProduct = tempItem.product_name && !tempItem.id.toString().startsWith('temp-') && tempItem.id.toString().startsWith('order-temp-')
+                
                 // Create the product in inventory first
                 const productPayload = {
                     name: tempItem.product_name,
@@ -172,6 +207,9 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
                 }
             }
 
+            // Clear the supplier's temporary products from localStorage since they've been ordered
+            localStorage.removeItem(`tempProducts_${selectedSupplier.id}`)
+
             alert(`Purchase Order ${orderData.order_number} created successfully!`)
             onSuccess()
             handleClose()
@@ -188,6 +226,7 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
         setSelectedSupplier(null)
         setOrderItems([])
         setTempProducts([])
+        setSupplierTempProducts([])
         setExpectedDelivery('')
         setNotes('')
         onClose()
@@ -299,7 +338,34 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
                                 )}
                             </div>
 
-                            {/* Temporary Products Section */}
+                            {/* Supplier Temporary Products Section */}
+                            {supplierTempProducts.length > 0 && (
+                                <div className="mt-6">
+                                    <h4 className="section-label">Supplier Predefined Products</h4>
+                                    <div className="border border-gray-200 rounded-lg p-3 mb-4">
+                                        {supplierTempProducts.map((tempProduct) => (
+                                            <div key={tempProduct.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-2 mb-2 bg-blue-50 rounded">
+                                                <div className="flex-1">
+                                                    <div className="font-medium">{tempProduct.name}</div>
+                                                    <div className="text-sm text-gray-600">
+                                                        {tempProduct.sku && `SKU: ${tempProduct.sku} | `}
+                                                        Price: ₹{Number(tempProduct.price || 0).toFixed(2)}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="btn-secondary"
+                                                    onClick={() => addSupplierTempProduct(tempProduct)}
+                                                >
+                                                    Add to Order
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* New Temporary Products Section */}
                             <div className="mt-6">
                                 <div className="flex justify-between items-center mb-3">
                                     <h4 className="section-label">New Products</h4>
