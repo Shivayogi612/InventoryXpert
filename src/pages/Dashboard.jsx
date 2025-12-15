@@ -134,16 +134,26 @@ export default function Dashboard() {
 
     let recentValue = 0
     let previousValue = 0
+    let recentProfit = 0
+    let previousProfit = 0
 
     transactionsList.forEach(transaction => {
       if (!transaction.created_at) return
       const date = new Date(transaction.created_at)
-      const value = Math.abs(transaction.quantity || 0) * (transaction.unit_price || 0)
-
-      if (date >= thirtyDaysAgo) {
-        recentValue += value
-      } else if (date >= sixtyDaysAgo && date < thirtyDaysAgo) {
-        previousValue += value
+      // For profit calculation, we only consider 'out' transactions (sales)
+      if (transaction.type === 'out') {
+        const value = Math.abs(transaction.quantity || 0) * (transaction.unit_price || 0)
+        // Profit = revenue - cost
+        const cost = value * 0.7 // Assuming 70% cost of goods sold
+        const profit = value - cost
+        
+        if (date >= thirtyDaysAgo) {
+          recentValue += value
+          recentProfit += profit
+        } else if (date >= sixtyDaysAgo && date < thirtyDaysAgo) {
+          previousValue += value
+          previousProfit += profit
+        }
       }
     })
 
@@ -151,13 +161,32 @@ export default function Dashboard() {
       ? Math.round(((recentValue - previousValue) / previousValue) * 100)
       : 0
 
+    const profitTrend = previousProfit > 0
+      ? Math.round(((recentProfit - previousProfit) / previousProfit) * 100)
+      : 0
+
     const customerTrend = Math.round((totalProducts * 0.05) - 10) // Simulated based on product count
 
     return {
       budget: { direction: budgetTrend >= 0 ? 'up' : 'down', value: `${Math.abs(budgetTrend)}%` },
+      profit: { direction: profitTrend >= 0 ? 'up' : 'down', value: `${Math.abs(profitTrend)}%` },
       customers: { direction: customerTrend >= 0 ? 'up' : 'down', value: `${Math.abs(customerTrend)}%` }
     }
   }, [transactionsList, totalProducts])
+
+  // Calculate total profit from sales transactions
+  const totalProfit = useMemo(() => {
+    let profit = 0
+    transactionsList.forEach(transaction => {
+      if (transaction.type === 'out') { // Sales transactions
+        const revenue = Math.abs(transaction.quantity || 0) * (transaction.unit_price || 0)
+        // Assuming 70% cost of goods sold, so 30% profit margin
+        const transactionProfit = revenue * 0.3
+        profit += transactionProfit
+      }
+    })
+    return profit
+  }, [transactionsList])
 
   return (
     <Layout>
@@ -189,9 +218,11 @@ export default function Dashboard() {
           />
           <MetricCard
             title="TOTAL PROFIT"
-            value={`${formatCurrency(totalInventoryValue * 0.15, { maximumFractionDigits: 0 })}`}
+            value={`${formatCurrency(totalProfit, { maximumFractionDigits: 0 })}`}
             icon={null}
             iconBg="icon-purple"
+            trend={trends.profit.direction}
+            trendValue={trends.profit.value}
           />
         </div>
 
