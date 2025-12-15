@@ -29,12 +29,11 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-white p-4">
-      <Card className="max-w-md w-full p-8 rounded-2xl shadow-xl">
-
+      <Card className="max-w-md w-full p-8 rounded-2xl">
         {/* APP NAME ONLY */}
         <div className="flex flex-col items-center mb-6">
           <h1 className="font-semibold text-xl text-gray-900">
-            InventoryXpert
+            InventoryXpert <span className="text-gray-500">(Nova Mart)</span>
           </h1>
           <p className="text-gray-500 text-sm mt-1">
             Smart Inventory Management System

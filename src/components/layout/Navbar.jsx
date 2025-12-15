@@ -35,7 +35,7 @@ export default function Navbar({ onToggleSidebar }) {
             ☰
           </button>
           <div className="flex items-center gap-2">
-            <h1 className="font-semibold text-base text-white">InventoryXpert</h1>
+            <h1 className="font-semibold text-base text-white">InventoryXpert <span className="text-gray-400">(Nova Mart)</span></h1>
           </div>
         </div>
         <div className="flex items-center gap-3">
