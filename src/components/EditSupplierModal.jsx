@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { X, User, Mail, Phone, MapPin, Star, StickyNote, Plus, Package, Trash2, Info } from 'lucide-react'
+import { X, User, Mail, Phone, MapPin, Star, StickyNote, Plus, Package, Trash2 } from 'lucide-react'
 import Input from './ui/Input'
 import Button from './ui/Button'
 import { useEnhancedSuppliers } from '../hooks/useEnhancedSuppliers'
@@ -276,21 +276,10 @@ export default function EditSupplierModal({ isOpen, onClose, supplier, onSuccess
 
           {/* Temporary Products Section */}
           <div className="mt-6">
-            <h3 className="text-lg font-semibold mb-3">Supplier Products</h3>
-            
-            {/* Info box explaining how this works */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-              <div className="flex items-start gap-3">
-                <Info className="text-blue-500 mt-0.5 flex-shrink-0" size={20} />
-                <div>
-                  <h4 className="font-medium text-blue-800">How Product Creation Works</h4>
-                  <p className="text-blue-700 text-sm mt-1">
-                    Add products here that this supplier offers. When you create a purchase order for these products, 
-                    they will be automatically added to your inventory. This ensures all your products are linked to suppliers.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <h3 className="text-lg font-semibold mb-3">Temporary Products</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Add new products for this supplier. These will only be saved to inventory when you create a purchase order.
+            </p>
             
             {/* Add New Product Form */}
             <div className="border border-gray-200 rounded-lg p-4 mb-4">
@@ -338,7 +327,7 @@ export default function EditSupplierModal({ isOpen, onClose, supplier, onSuccess
             {/* Temporary Products List */}
             {tempProducts.length > 0 && (
               <div className="border border-gray-200 rounded-lg p-4">
-                <h4 className="font-medium mb-3">Supplier Products ({tempProducts.length})</h4>
+                <h4 className="font-medium mb-3">Temporary Products ({tempProducts.length})</h4>
                 <div className="space-y-2 max-h-60 overflow-y-auto">
                   {tempProducts.map((product) => (
                     <div key={product.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">

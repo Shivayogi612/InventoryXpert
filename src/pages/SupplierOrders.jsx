@@ -4,7 +4,7 @@ import { useCache } from '../hooks/useCache'
 import { productsService } from '../services/products.service'
 import { suppliersService } from '../services/suppliers.service'
 import { ordersService } from '../services/orders.service'
-import { Package, Truck, AlertCircle, Plus, Phone, Mail, MapPin, Calendar, CheckCircle, Trash2, Edit, Info } from 'lucide-react'
+import { Package, Truck, AlertCircle, Plus, Phone, Mail, MapPin, Calendar, CheckCircle, Trash2, Edit } from 'lucide-react'
 import CreateOrderModal from '../components/CreateOrderModal'
 import AddSupplierModal from '../components/AddSupplierModal'
 import EditSupplierModal from '../components/EditSupplierModal'
@@ -12,7 +12,6 @@ import DeleteSupplierModal from '../components/DeleteSupplierModal'
 import { toast } from 'react-hot-toast'
 import { downloadPurchaseOrderPdf } from '../utils/purchaseOrderPdf'
 import { formatCurrency } from '../utils/currency'
-import Card from '../components/ui/Card'
 
 function StatCard({ icon: Icon, label, value, color }) {
     return (
@@ -349,20 +348,6 @@ export default function SupplierOrders() {
                         </button>
                     </div>
                 </div>
-
-                {/* Notice about product creation */}
-                <Card className="p-4 bg-blue-50 border border-blue-200 mb-6">
-                    <div className="flex items-start gap-3">
-                        <Info className="text-blue-500 mt-0.5 flex-shrink-0" size={20} />
-                        <div>
-                            <h3 className="font-medium text-blue-800">Product Creation</h3>
-                            <p className="text-blue-700 text-sm mt-1">
-                                This is where you create and manage products. Add new suppliers and define their products here. 
-                                When you create a purchase order for a new product, it will be added to your inventory.
-                            </p>
-                        </div>
-                    </div>
-                </Card>
 
                 {/* Stats - Responsive grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
