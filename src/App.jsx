@@ -8,6 +8,8 @@ import Inventory from './pages/Inventory'
 import SupplierOrders from './pages/SupplierOrders'
 import AlertsPage from './pages/Alerts'
 import Transactions from './pages/Transactions'
+import Forecasting from './pages/Forecasting'
+import AdvancedForecasting from './pages/AdvancedForecasting'
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth()
@@ -58,6 +60,22 @@ export default function App() {
           element={
             <ProtectedRoute>
               <AlertsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/forecasting"
+          element={
+            <ProtectedRoute>
+              <Forecasting />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/advanced-forecasting"
+          element={
+            <ProtectedRoute>
+              <AdvancedForecasting />
             </ProtectedRoute>
           }
         />

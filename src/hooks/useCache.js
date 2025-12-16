@@ -3,7 +3,7 @@ import { cacheService } from '../services/cache.service'
 import { toast } from 'react-hot-toast'
 
 export function useCache(key, fetchFunction, options = {}) {
-  const { staleTime = 5 * 60 * 1000, initialData = [] } = options
+  const { staleTime = 2 * 60 * 1000, initialData = [] } = options // Reduced from 5 mins to 2 mins
   const [data, setData] = useState(initialData)
   const [loading, setLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -46,7 +46,14 @@ export function useCache(key, fetchFunction, options = {}) {
       setLastSync(Date.now())
     } catch (err) {
       console.error(`Failed to refresh cache for ${key}:`, err)
-      toast.error('Failed to sync data. Showing cached version.')
+      // If cache fails due to storage issues, still update the UI with fresh data
+      try {
+        const result = await fetchFunction()
+        if (!mounted.current) return
+        setData(result ?? initialData)
+      } catch (fetchErr) {
+        toast.error('Failed to sync data. Showing cached version.')
+      }
     } finally {
       if (mounted.current) setSyncing(false)
     }

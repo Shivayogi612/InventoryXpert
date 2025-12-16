@@ -109,55 +109,53 @@ function OrderItemRow({ order, onMarkDelivered, onDownloadPdf }) {
     }
 
     return (
-        <>
-            <tr className="hover:bg-gray-50">
-                <td className="px-4 py-3">
-                    <div className="font-medium">{order.order_number}</div>
-                    <div className="text-sm text-gray-500">{new Date(order.created_at).toLocaleDateString()}</div>
-                </td>
-                <td className="px-4 py-3">
-                    <div className="font-medium">{order.supplier?.name || 'Unknown Supplier'}</div>
-                    <div className="text-sm text-gray-500">{order.supplier?.contact_person || ''}</div>
-                </td>
-                <td className="px-4 py-3">
-                    <div className="text-sm">
-                        {order.items_count} items
+        <tr className="hover:bg-gray-50">
+            <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm font-medium text-gray-900">{order.order_number}</div>
+                <div className="text-sm text-gray-500">{new Date(order.created_at).toLocaleDateString()}</div>
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm font-medium text-gray-900">{order.supplier?.name || 'Unknown Supplier'}</div>
+                <div className="text-sm text-gray-500">{order.supplier?.contact_person || ''}</div>
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm text-gray-900">
+                    {order.items_count} items
+                </div>
+                <div className="text-sm text-gray-500">
+                    {formatCurrency(order.total_value || 0)}
+                </div>
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[order.status] || 'bg-gray-100 text-gray-800'}`}>
+                    {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                </span>
+                {order.expected_delivery && (
+                    <div className="text-sm text-gray-500 mt-1 flex items-center">
+                        <Calendar size={14} className="mr-1" />
+                        {new Date(order.expected_delivery).toLocaleDateString()}
                     </div>
-                    <div className="text-sm text-gray-500">
-                        {formatCurrency(order.total_value || 0)}
-                    </div>
-                </td>
-                <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[order.status] || 'bg-gray-100 text-gray-800'}`}>
-                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                    </span>
-                    {order.expected_delivery && (
-                        <div className="text-sm text-gray-500 mt-1 flex items-center">
-                            <Calendar size={14} className="mr-1" />
-                            {new Date(order.expected_delivery).toLocaleDateString()}
-                        </div>
-                    )}
-                </td>
-                <td className="px-4 py-3">
-                    <div className="flex space-x-2">
+                )}
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <div className="flex space-x-2">
+                    <button
+                        onClick={() => onDownloadPdf(order)}
+                        className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                        PDF
+                    </button>
+                    {order.status !== 'delivered' && order.status !== 'cancelled' && (
                         <button
-                            onClick={() => onDownloadPdf(order)}
-                            className="btn-secondary text-sm px-3 py-1"
+                            onClick={() => onMarkDelivered(order.id)}
+                            className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                         >
-                            PDF
+                            Mark Delivered
                         </button>
-                        {order.status !== 'delivered' && order.status !== 'cancelled' && (
-                            <button
-                                onClick={() => onMarkDelivered(order.id)}
-                                className="btn-primary text-sm px-3 py-1"
-                            >
-                                Mark Delivered
-                            </button>
-                        )}
-                    </div>
-                </td>
-            </tr>
-        </>
+                    )}
+                </div>
+            </td>
+        </tr>
     )
 }
 
@@ -415,7 +413,7 @@ export default function SupplierOrders() {
                 </div>
 
                 {activeTab === 'orders' && (
-                    <div className="card">
+                    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                         {ordersList.length === 0 ? (
                             <div className="empty-state">
                                 <Package size={48} className="text-gray-300 mb-3" />
@@ -428,29 +426,27 @@ export default function SupplierOrders() {
                             </div>
                         ) : (
                             <div className="overflow-x-auto">
-                                <div className="rounded-xl border border-gray-200 overflow-hidden">
-                                    <table className="min-w-full">
-                                        <thead className="bg-gray-50">
-                                            <tr>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-200">
-                                            {ordersList.map(order => (
-                                                <OrderItemRow
-                                                    key={order.id}
-                                                    order={order}
-                                                    onMarkDelivered={handleMarkAsDelivered}
-                                                    onDownloadPdf={handleDownloadPdf}
-                                                />
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {ordersList.map(order => (
+                                            <OrderItemRow
+                                                key={order.id}
+                                                order={order}
+                                                onMarkDelivered={handleMarkAsDelivered}
+                                                onDownloadPdf={handleDownloadPdf}
+                                            />
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
                     </div>

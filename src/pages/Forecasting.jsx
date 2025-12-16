@@ -6,6 +6,8 @@ import useDemandForecasts from '../hooks/useDemandForecasts'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 import { transactionsService } from '../services/transactions.service'
 import { getInsightsForProducts } from '../services/productInsights.service'
+import { Link } from 'react-router-dom'
+import { ArrowRight, Sparkles, TrendingUp, AlertTriangle } from 'lucide-react'
 
 export default function Forecasting() {
   const { data: products = [] } = useCache('products', () => productsService.getAll(), { staleTime: 5 * 60 * 1000 })
@@ -108,89 +110,112 @@ export default function Forecasting() {
     return () => { mounted = false }
   }, [items])
 
-  // Light color schemes - no gradients
+  // Simplified color schemes for better readability
   const getColorScheme = (risk) => {
     switch (risk) {
       case 'high':
         return {
-          bg: '#fef2f2',
-          border: '#fecaca',
-          text: '#991b1b',
+          bg: 'bg-red-50',
+          border: 'border-red-200',
+          text: 'text-red-800',
           stroke: '#ef4444',
-          label: 'High Risk'
+          label: 'High Risk',
+          badge: 'bg-red-100 text-red-800'
         }
       case 'medium':
         return {
-          bg: '#fffbeb',
-          border: '#fde68a',
-          text: '#92400e',
+          bg: 'bg-yellow-50',
+          border: 'border-yellow-200',
+          text: 'text-yellow-800',
           stroke: '#f59e0b',
-          label: 'Medium Risk'
+          label: 'Medium Risk',
+          badge: 'bg-yellow-100 text-yellow-800'
         }
       default:
         return {
-          bg: '#f0f9ff',
-          border: '#bfdbfe',
-          text: '#1e40af',
+          bg: 'bg-blue-50',
+          border: 'border-blue-200',
+          text: 'text-blue-800',
           stroke: '#3b82f6',
-          label: 'Low Risk'
+          label: 'Low Risk',
+          badge: 'bg-blue-100 text-blue-800'
         }
     }
   }
 
-  // Market trend info - light colors
+  // Simplified market trend info
   const getMarketTrendInfo = (insight, pct) => {
     if (!insight?.trend_label) {
-      if (pct > 15) return { status: 'Hot Demand', icon: '🔥', bg: '#fff7ed', text: '#9a3412', border: '#fed7aa' }
-      if (pct > 5) return { status: 'Trending Up', icon: '📈', bg: '#ecfdf5', text: '#065f46', border: '#a7f3d0' }
-      if (pct < -15) return { status: 'Declining', icon: '📉', bg: '#f8fafc', text: '#475569', border: '#cbd5e1' }
-      if (pct < -5) return { status: 'Cooling Off', icon: '❄️', bg: '#eff6ff', text: '#1e40af', border: '#bfdbfe' }
-      return { status: 'Stable', icon: '➡️', bg: '#f0fdfa', text: '#115e59', border: '#99f6e4' }
+      if (pct > 15) return { status: 'Hot Demand', icon: '🔥', bg: 'bg-orange-50', text: 'text-orange-800', border: 'border-orange-200' }
+      if (pct > 5) return { status: 'Trending Up', icon: '📈', bg: 'bg-green-50', text: 'text-green-800', border: 'border-green-200' }
+      if (pct < -15) return { status: 'Declining', icon: '📉', bg: 'bg-gray-50', text: 'text-gray-800', border: 'border-gray-200' }
+      if (pct < -5) return { status: 'Cooling Off', icon: '❄️', bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200' }
+      return { status: 'Stable', icon: '➡️', bg: 'bg-gray-50', text: 'text-gray-800', border: 'border-gray-200' }
     }
 
     switch (insight.trend_label) {
       case 'up':
-        return { status: 'Trending Up', icon: '📈', bg: '#ecfdf5', text: '#065f46', border: '#a7f3d0' }
+        return { status: 'Trending Up', icon: '📈', bg: 'bg-green-50', text: 'text-green-800', border: 'border-green-200' }
       case 'down':
-        return { status: 'Declining', icon: '📉', bg: '#f8fafc', text: '#475569', border: '#cbd5e1' }
+        return { status: 'Declining', icon: '📉', bg: 'bg-gray-50', text: 'text-gray-800', border: 'border-gray-200' }
       default:
-        return { status: 'Stable', icon: '➡️', bg: '#f0fdfa', text: '#115e59', border: '#99f6e4' }
+        return { status: 'Stable', icon: '➡️', bg: 'bg-gray-50', text: 'text-gray-800', border: 'border-gray-200' }
     }
   }
 
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Clean Header */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
+        {/* Enhanced Header with Advanced Features Link */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-1">Demand Forecasting</h2>
-              <p className="text-sm text-gray-600">AI-powered insights and market trend analysis</p>
+              <h1 className="text-2xl font-bold text-gray-900">Demand Forecasting</h1>
+              <p className="text-gray-600 mt-1">AI-powered insights and market trend analysis</p>
             </div>
 
-            <div className="flex items-center gap-3">
-              <button
-                className="px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-sm text-gray-700 font-medium"
-                onClick={() => window.location.reload()}
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <Link
+                to="/advanced-forecasting"
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors"
               >
-                🔄 Refresh Page
-              </button>
-              <button
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium disabled:opacity-50"
-                onClick={() => refresh(true)}
-                disabled={loading}
-              >
-                {loading ? '⏳ Refreshing…' : '✨ Refresh Forecasts'}
-              </button>
+                <Sparkles className="w-4 h-4" />
+                Advanced Forecasting
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <div className="flex items-center gap-3">
+                <button
+                  className="px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-sm text-gray-700 font-medium hover:bg-gray-200"
+                  onClick={() => window.location.reload()}
+                >
+                  🔄 Refresh
+                </button>
+                <button
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium disabled:opacity-50 hover:bg-blue-700"
+                  onClick={() => refresh(true)}
+                  disabled={loading}
+                >
+                  {loading ? '⏳ Refreshing…' : '✨ Refresh Forecasts'}
+                </button>
+              </div>
             </div>
+          </div>
+          
+          {/* Feature Highlights */}
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h3 className="font-medium text-blue-900 mb-2">New Advanced Features</h3>
+            <ul className="text-sm text-blue-800 list-disc pl-5 space-y-1">
+              <li>Multiple forecasting models: Simple Moving Average, Seasonal, and Promotion-aware</li>
+              <li>Dynamic safety stock and reorder point calculation</li>
+              <li>Scenario planning with interactive sliders</li>
+            </ul>
           </div>
         </div>
 
         {/* Products Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {items.length === 0 && (
-            <div className="col-span-full text-center py-16 bg-white rounded-lg border border-gray-200">
+            <div className="col-span-full text-center py-16 bg-white rounded-xl shadow-sm border border-gray-200">
               <div className="text-6xl mb-4">📦</div>
               <div className="text-lg text-gray-500">No products found.</div>
             </div>
@@ -212,110 +237,93 @@ export default function Forecasting() {
             return (
               <div
                 key={product.id}
-                className="bg-white rounded-lg border-2 overflow-hidden"
-                style={{ borderColor: colorScheme.border }}
+                className={`bg-white rounded-xl shadow-sm border overflow-hidden ${colorScheme.border}`}
               >
-                {/* Top colored bar */}
-                <div
-                  className="h-1.5 w-full"
-                  style={{ backgroundColor: colorScheme.stroke }}
-                />
-
                 <div className="p-5">
                   {/* Header */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1 min-w-0">
-                      <div className="inline-block px-2.5 py-1 rounded-md bg-gray-100 text-xs font-medium text-gray-700 mb-2">
-                        {product.category || 'General'}
-                      </div>
-                      <h3 className="font-bold text-lg text-gray-900 mb-1 truncate">
+                      <h3 className="font-bold text-lg text-gray-900 truncate">
                         {product.name}
                       </h3>
-                      <p className="text-xs text-gray-500">SKU: {product.sku}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-gray-500">SKU: {product.sku}</span>
+                        <span className="text-xs text-gray-400">•</span>
+                        <span className="text-xs text-gray-500">{product.category || 'General'}</span>
+                      </div>
                     </div>
 
-                    <div
-                      className="px-3 py-1.5 rounded-lg text-xs font-bold ml-3"
-                      style={{
-                        backgroundColor: colorScheme.bg,
-                        color: colorScheme.text,
-                        border: `1px solid ${colorScheme.border}`
-                      }}
-                    >
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${colorScheme.badge}`}>
                       {colorScheme.label}
-                    </div>
-                  </div>
-
-                  {/* Market Trend Section */}
-                  <div
-                    className="mb-4 p-4 rounded-lg border-2"
-                    style={{
-                      backgroundColor: marketTrend.bg,
-                      borderColor: marketTrend.border,
-                      color: marketTrend.text
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">{marketTrend.icon}</span>
-                        <div>
-                          <div className="text-xs font-semibold uppercase opacity-70">Market Trend</div>
-                          <div className="text-base font-bold">{marketTrend.status}</div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-xl font-bold">{pctLabel}</div>
-                        <div className="text-xs opacity-70">vs last week</div>
-                      </div>
-                    </div>
-
-                    {insightsMap[product.id]?.summary && (
-                      <div className="text-xs leading-relaxed opacity-80 border-t pt-2 mt-2" style={{ borderColor: marketTrend.border }}>
-                        💡 {insightsMap[product.id].summary}
-                      </div>
-                    )}
+                    </span>
                   </div>
 
                   {/* Stats Grid */}
                   <div className="grid grid-cols-3 gap-3 mb-4">
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-                      <div className="text-xs text-blue-700 mb-1 font-medium">Forecast</div>
-                      <div className="text-xl font-bold text-blue-900">
+                      <div className="text-xs text-blue-700 mb-1">Forecast</div>
+                      <div className="text-lg font-bold text-blue-900">
                         {forecast30 ?? '-'}
                       </div>
                       <div className="text-xs text-blue-600">30 days</div>
                     </div>
                     <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-center">
-                      <div className="text-xs text-purple-700 mb-1 font-medium">Stock</div>
-                      <div className="text-xl font-bold text-purple-900">
+                      <div className="text-xs text-purple-700 mb-1">Stock</div>
+                      <div className="text-lg font-bold text-purple-900">
                         {qty}
                       </div>
                       <div className="text-xs text-purple-600">units</div>
                     </div>
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
-                      <div className="text-xs text-amber-700 mb-1 font-medium">Reorder</div>
-                      <div className="text-xl font-bold text-amber-900">
+                      <div className="text-xs text-amber-700 mb-1">Reorder</div>
+                      <div className="text-lg font-bold text-amber-900">
                         {product.reorder_level ?? '—'}
                       </div>
                       <div className="text-xs text-amber-600">level</div>
                     </div>
                   </div>
 
+                  {/* Market Trend Section */}
+                  <div className={`mb-4 p-4 rounded-lg border ${marketTrend.bg} ${marketTrend.border} ${marketTrend.text}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{marketTrend.icon}</span>
+                        <div>
+                          <div className="text-xs font-semibold uppercase opacity-70">Market Trend</div>
+                          <div className="font-medium">{marketTrend.status}</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold">{pctLabel}</div>
+                        <div className="text-xs opacity-70">vs last week</div>
+                      </div>
+                    </div>
+
+                    {insightsMap[product.id]?.summary && (
+                      <div className={`text-xs mt-2 pt-2 border-t ${marketTrend.border} ${marketTrend.text}`}>
+                        💡 {insightsMap[product.id].summary}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Chart */}
                   <div className="mb-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <div className="text-xs font-semibold text-gray-700 mb-3 uppercase">
-                      📈 30-Day Sales Trend
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="text-xs font-semibold text-gray-700">
+                        30-Day Sales Trend
+                      </div>
+                      <TrendingUp className="w-4 h-4 text-gray-500" />
                     </div>
                     <div className="h-32">
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={series} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
                           <defs>
-                            <linearGradient id={fillId} x1="0" x2="0" y1="0" y2="1">
-                              <stop offset="0%" stopColor={colorScheme.stroke} stopOpacity={0.3} />
-                              <stop offset="100%" stopColor={colorScheme.stroke} stopOpacity={0.05} />
+                            <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor={colorScheme.stroke} stopOpacity={0.2}/>
+                              <stop offset="95%" stopColor={colorScheme.stroke} stopOpacity={0.05}/>
                             </linearGradient>
                           </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
                           <XAxis dataKey="date" hide />
                           <YAxis hide />
                           <Tooltip
@@ -344,23 +352,24 @@ export default function Forecasting() {
 
                   {/* AI Recommendation */}
                   {insightsMap[product.id] && (
-                    <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
+                    <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-lg">🤖</span>
-                        <span className="text-xs font-bold uppercase text-slate-700">AI Recommendation</span>
+                        <span className="text-xs font-bold uppercase text-gray-700">AI Recommendation</span>
                       </div>
-                      <div className={`inline-block px-3 py-1.5 rounded-lg text-xs font-bold mb-2 ${insightsMap[product.id].recommendation === 'aggressive_buy' ? 'bg-green-100 text-green-800 border border-green-300' :
-                          insightsMap[product.id].recommendation === 'normal_buy' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
-                            insightsMap[product.id].recommendation === 'cautious_buy' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                              'bg-gray-100 text-gray-800 border border-gray-300'
-                        }`}>
+                      <div className={`inline-block px-3 py-1 rounded-full text-xs font-medium mb-2 ${
+                        insightsMap[product.id].recommendation === 'aggressive_buy' ? 'bg-green-100 text-green-800' :
+                        insightsMap[product.id].recommendation === 'normal_buy' ? 'bg-blue-100 text-blue-800' :
+                        insightsMap[product.id].recommendation === 'cautious_buy' ? 'bg-amber-100 text-amber-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
                         {insightsMap[product.id].recommendation ?
                           insightsMap[product.id].recommendation.replace(/_/g, ' ').toUpperCase() :
                           'ANALYZING'
                         }
                       </div>
                       {insightsMap[product.id].stock_advice && (
-                        <p className="text-xs text-slate-600 leading-relaxed">
+                        <p className="text-xs text-gray-600">
                           {insightsMap[product.id].stock_advice}
                         </p>
                       )}

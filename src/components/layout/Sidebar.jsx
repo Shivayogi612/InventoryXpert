@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Box, Truck, History } from 'lucide-react'
+import { Home, Box, Truck, History, TrendingUp } from 'lucide-react'
 
 const NavItem = ({ to, icon: Icon, label, active }) => (
   <Link
@@ -53,6 +53,13 @@ export default function Sidebar({ open = false }) {
           label="Inventory"
           active={pathname.startsWith('/inventory')}
         />
+
+        {/* <NavItem
+          to="/forecasting"
+          icon={TrendingUp}
+          label="Forecasting"
+          active={pathname.startsWith('/forecasting')}
+        /> */}
 
         <NavItem
           to="/transactions"
