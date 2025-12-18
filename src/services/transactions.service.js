@@ -2,19 +2,34 @@ import { supabase } from './supabase'
 import { productsService } from './products.service'
 import { cacheService } from './cache.service'
 import { alertsService } from './alerts.service'
+import { smsService } from './sms.service'
 
 export const transactionsService = {
   async getRecent(limit = 100) {
     try {
-      const { data, error } = await supabase
+      console.time('transactionsService.getRecent')
+      console.log('Transactions service: Attempting to fetch recent transactions')
+      const { data, error, count } = await supabase
         .from('transactions')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
         .limit(limit)
-      if (error) throw error
+      console.log('Transactions service response:', { data, error, count })
+      console.timeEnd('transactionsService.getRecent')
+      if (error) {
+        console.error('Transactions service error:', error)
+        throw error
+      }
+      console.log(`Transactions service: Successfully fetched ${data.length} transactions`)
       return data
     } catch (err) {
       console.error('Error fetching transactions:', err)
+      console.error('Error details:', {
+        message: err.message,
+        code: err.code,
+        details: err.details,
+        hint: err.hint
+      })
       return []
     }
   },
@@ -50,6 +65,8 @@ export const transactionsService = {
       else if (type === 'out' || type === 'damaged') newQty = prevQty - qty
       else if (type === 'adjustment') newQty = prevQty + qty
       else if (type === 'transfer') newQty = prevQty
+      else if (type === 'restock') newQty = prevQty + qty
+      else throw new Error(`Invalid transaction type: ${type}`)
       if (newQty < 0) newQty = 0
       const unitPrice = Number(payload.unit_price ?? product.price ?? 0)
       const totalValue = unitPrice * qty
@@ -82,8 +99,17 @@ export const transactionsService = {
           const existingAlerts = await alertsService.getActiveAlerts()
           const hasLow = (existingAlerts || []).find((a) => a.product_id === product.id && a.type === 'low_stock' && a.status === 'active')
           if (!hasLow) {
-            await alertsService.createAlert({ product_id: product.id, type: 'low_stock', severity: 'high', title: `${product.name} is low on stock`, message: `Product ${product.name} (SKU: ${product.sku}) has low inventory (${newQty} left).`, metadata: {} })
+            const alertData = { product_id: product.id, type: 'low_stock', severity: 'high', title: `${product.name} is low on stock`, message: `Product ${product.name} (SKU: ${product.sku}) has low inventory (${newQty} left).`, metadata: {} };
+            await alertsService.createAlert(alertData)
             await cacheService.clear('alerts')
+
+            // Send SMS immediately
+            const message = smsService.formatStockAlert(alertData, product);
+            console.log(`Transaction triggered alert. Attempting to send SMS for ${product.name}...`);
+            const smsResult = await smsService.sendSMS(message);
+            console.log(`SMS result for ${product.name}:`, smsResult);
+          } else {
+            console.log(`Alert already active for ${product.name}, skipping duplicate SMS.`);
           }
         }
       } catch (e) {

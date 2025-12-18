@@ -4,7 +4,7 @@ import { useCache } from '../hooks/useCache'
 import { productsService } from '../services/products.service'
 import { suppliersService } from '../services/suppliers.service'
 import { ordersService } from '../services/orders.service'
-import { Package, Truck, AlertCircle, Plus, Phone, Mail, MapPin, Calendar, CheckCircle, Trash2, Edit } from 'lucide-react'
+import { Package, Truck, AlertCircle, Plus, Phone, Mail, MapPin, Calendar, CheckCircle, Trash2, Edit, Info, Download, Check } from 'lucide-react'
 import CreateOrderModal from '../components/CreateOrderModal'
 import AddSupplierModal from '../components/AddSupplierModal'
 import EditSupplierModal from '../components/EditSupplierModal'
@@ -12,6 +12,7 @@ import DeleteSupplierModal from '../components/DeleteSupplierModal'
 import { toast } from 'react-hot-toast'
 import { downloadPurchaseOrderPdf } from '../utils/purchaseOrderPdf'
 import { formatCurrency } from '../utils/currency'
+import { useAutoPoGeneration } from '../hooks/useAutoPoGeneration'
 
 function StatCard({ icon: Icon, label, value, color }) {
     return (
@@ -32,7 +33,7 @@ function StatCard({ icon: Icon, label, value, color }) {
 function SupplierCard({ supplier, onRefresh }) {
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [showEditModal, setShowEditModal] = useState(false)
-    
+
     return (
         <>
             <div className="supplier-card">
@@ -99,7 +100,7 @@ function SupplierCard({ supplier, onRefresh }) {
 }
 
 // Order Item Row Component
-function OrderItemRow({ order, onMarkDelivered, onDownloadPdf }) {
+function OrderItemRow({ order, onMarkDelivered, onDownloadPdf, onDeleteOrder }) {
     const statusColors = {
         pending: 'bg-yellow-100 text-yellow-800',
         shipped: 'bg-blue-100 text-blue-800',
@@ -143,6 +144,7 @@ function OrderItemRow({ order, onMarkDelivered, onDownloadPdf }) {
                         onClick={() => onDownloadPdf(order)}
                         className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     >
+                        <Download size={14} className="mr-1" />
                         PDF
                     </button>
                     {order.status !== 'delivered' && order.status !== 'cancelled' && (
@@ -150,9 +152,17 @@ function OrderItemRow({ order, onMarkDelivered, onDownloadPdf }) {
                             onClick={() => onMarkDelivered(order.id)}
                             className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                         >
+                            <Check size={14} className="mr-1" />
                             Mark Delivered
                         </button>
                     )}
+                    <button
+                        onClick={() => onDeleteOrder(order.id)}
+                        className="inline-flex items-center px-3 py-1 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                    >
+                        <Trash2 size={14} className="mr-1" />
+                        Delete
+                    </button>
                 </div>
             </td>
         </tr>
@@ -165,6 +175,7 @@ export default function SupplierOrders() {
     const [showAddSupplier, setShowAddSupplier] = useState(false)
     const [autoGenerating, setAutoGenerating] = useState(false)
     const [autoSummary, setAutoSummary] = useState(null)
+    const { generatePurchaseOrders } = useAutoPoGeneration()
 
     // Fetch data from Supabase
     const { data: products = [] } = useCache('products', () => productsService.getAll(), { staleTime: 5 * 60 * 1000 })
@@ -229,7 +240,7 @@ export default function SupplierOrders() {
 
     const handleMarkAsDelivered = async (orderId) => {
         if (!window.confirm('This will add all items to inventory and create transactions. Are you sure?')) return
-        
+
         try {
             const result = await ordersService.markAsDelivered(orderId)
             toast.success(result.message)
@@ -237,6 +248,19 @@ export default function SupplierOrders() {
         } catch (err) {
             console.error('Error marking order as delivered:', err)
             toast.error(err.message || 'Failed to mark order as delivered')
+        }
+    }
+
+    const handleDeleteOrder = async (orderId) => {
+        if (!window.confirm('Are you sure you want to delete this purchase order? This action cannot be undone.')) return
+
+        try {
+            await ordersService.remove(orderId)
+            toast.success('Purchase order deleted successfully')
+            await refreshOrders?.()
+        } catch (err) {
+            console.error('Error deleting order:', err)
+            toast.error(err.message || 'Failed to delete purchase order')
         }
     }
 
@@ -255,55 +279,55 @@ export default function SupplierOrders() {
         console.log('Low stock items:', lowStockItems);
         console.log('Supplier lookup:', supplierLookup);
         console.log('Actionable low stock items:', actionableLowStock);
-        
+
         if (actionableLowStock.length === 0) {
             toast.error('No actionable items found. Check that products have matching suppliers.');
             return;
         }
-        
+
         if (!window.confirm(`This will generate ${actionableLowStock.length} purchase order(s). Continue?`)) return
-        
+
         setAutoGenerating(true)
         try {
             // Group items by supplier
             const supplierGroups = actionableLowStock.reduce((acc, product) => {
                 const supplierKey = (product.supplier || '').trim().toLowerCase()
                 const supplier = supplierLookup[supplierKey]
-                
+
                 // Debugging: Log each product processing
                 console.log('Processing product:', product.name, 'Supplier key:', supplierKey, 'Supplier found:', supplier)
-                
+
                 if (!supplier) return acc
-                
+
                 if (!acc[supplier.id]) {
                     acc[supplier.id] = {
                         supplier,
                         items: []
                     }
                 }
-                
+
                 // Calculate order quantity
                 const currentQty = Number(product.quantity || 0)
                 const maxStock = Number(product.max_stock_level || 0)
                 const reorderLevel = Number(product.reorder_level || 0)
                 const threshold = reorderLevel > 0 ? reorderLevel : 5
-                
+
                 // Order enough to reach max stock level, or at least 10 units
                 const quantityNeeded = maxStock > 0 ? Math.max(maxStock - currentQty, 10) : 10
-                
+
                 acc[supplier.id].items.push({
                     product_id: product.id,
                     product_name: product.name,
                     quantity: quantityNeeded,
                     unit_price: product.cost || product.price || 0
                 })
-                
+
                 return acc
             }, {})
 
             // Debugging: Log the supplier groups
             console.log('Supplier groups:', supplierGroups)
-            
+
             // Check if we have any groups to process
             if (Object.keys(supplierGroups).length === 0) {
                 toast.error('No valid supplier groups found. Check that products have matching suppliers.')
@@ -326,14 +350,14 @@ export default function SupplierOrders() {
 
                 // Debugging: Log order data
                 console.log('Creating order for supplier:', group.supplier.name, 'Order data:', orderData)
-                
+
                 const order = await ordersService.create(orderData)
-                
+
                 // Create order items
                 for (const item of group.items) {
                     // Debugging: Log item data
                     console.log('Adding item to order:', item)
-                    
+
                     // Fixed: Use addOrderItem with correct parameters (orderId, itemData)
                     await ordersService.addOrderItem(order.id, {
                         product_id: item.product_id,
@@ -354,6 +378,21 @@ export default function SupplierOrders() {
             toast.success(`Successfully generated ${createdOrders.length} purchase order(s)`)
         } catch (err) {
             console.error('Error auto-generating orders:', err)
+            toast.error('Failed to generate purchase orders: ' + err.message)
+        } finally {
+            setAutoGenerating(false)
+        }
+    }
+
+    const handleAutoGenerateBasedOnForecast = async () => {
+        setAutoGenerating(true)
+        try {
+            const result = await generatePurchaseOrders({ forecastDays: 30, modelType: 'sma' })
+            setAutoSummary(result)
+            await refreshOrders?.()
+            toast.success(`Successfully generated ${result.summary.ordersGenerated} purchase order(s) based on forecast`)
+        } catch (err) {
+            console.error('Error auto-generating forecast-based orders:', err)
             toast.error('Failed to generate purchase orders: ' + err.message)
         } finally {
             setAutoGenerating(false)
@@ -443,6 +482,7 @@ export default function SupplierOrders() {
                                                 order={order}
                                                 onMarkDelivered={handleMarkAsDelivered}
                                                 onDownloadPdf={handleDownloadPdf}
+                                                onDeleteOrder={handleDeleteOrder}
                                             />
                                         ))}
                                     </tbody>
@@ -466,9 +506,9 @@ export default function SupplierOrders() {
                             </div>
                         )}
                         {suppliersList.map(supplier => (
-                            <SupplierCard 
-                                key={supplier.id} 
-                                supplier={supplier} 
+                            <SupplierCard
+                                key={supplier.id}
+                                supplier={supplier}
                                 onRefresh={refreshSuppliers}
                             />
                         ))}
@@ -575,6 +615,36 @@ export default function SupplierOrders() {
                                 </div>
                             </>
                         )}
+
+                        <div className="mt-8 pt-6 border-t border-gray-200">
+                            <h4 className="text-md font-semibold text-gray-900 mb-3">Forecast-Based Auto-Generation</h4>
+                            <p className="mb-4 text-gray-600">
+                                Generate purchase orders based on predicted demand to prevent stockouts before they happen.
+                            </p>
+
+                            <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                                <div className="flex items-start gap-2">
+                                    <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                        <div className="font-medium text-blue-800">How it works</div>
+                                        <p className="text-sm text-blue-700 mt-1">
+                                            This feature analyzes demand forecasts for the next 30 days and generates purchase orders
+                                            for products that are predicted to fall below safety stock levels.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button
+                                className="btn-primary w-full md:w-auto"
+                                disabled={autoGenerating}
+                                onClick={handleAutoGenerateBasedOnForecast}
+                            >
+                                {autoGenerating
+                                    ? 'Generating forecast-based purchase orders...'
+                                    : 'Generate Purchase Orders Based on Forecast'}
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

@@ -4,11 +4,33 @@ import Papa from 'papaparse'
 export const productsService = {
   async getAll() {
     try {
-      const { data, error } = await supabase.from('products').select('*').order('name', { ascending: true })
-      if (error) throw error
+      console.time('productsService.getAll')
+      console.log('Products service: Attempting to fetch all products')
+
+      // For testing purposes, let's try to bypass RLS by using a different approach
+      // Note: This is only for debugging and should not be used in production
+      const { data, error, count } = await supabase.from('products').select('*', { count: 'exact' }).order('name', { ascending: true })
+      console.log('Products service response:', { data, error, count })
+      console.timeEnd('productsService.getAll')
+      if (error) {
+        console.error('Products service error:', error)
+        // Log additional error details
+        console.error('Error code:', error.code)
+        console.error('Error message:', error.message)
+        console.error('Error details:', error.details)
+        console.error('Error hint:', error.hint)
+        throw error
+      }
+      console.log(`Products service: Successfully fetched ${data.length} products`)
       return data
     } catch (err) {
       console.error('Error fetching products:', err)
+      console.error('Error details:', {
+        message: err.message,
+        code: err.code,
+        details: err.details,
+        hint: err.hint
+      })
       return []
     }
   },
@@ -75,6 +97,10 @@ export const productsService = {
         console.error('Error creating product:', msg)
         throw new Error(msg)
       }
+
+      // Immediate Alert Check
+      this._checkAndTriggerAlert(data);
+
       return data
     } catch (err) {
       console.error('Error creating product:', err)
@@ -86,10 +112,56 @@ export const productsService = {
     try {
       const { data, error } = await supabase.from('products').update(payload).eq('id', id).select().single()
       if (error) throw error
+
+      // Immediate Alert Check
+      this._checkAndTriggerAlert(data);
+
       return data
     } catch (err) {
       console.error('Error updating product:', err)
       throw err
+    }
+  },
+
+  /**
+   * Internal helper to check stock levels and trigger alerts/SMS immediately
+   * @private
+   */
+  async _checkAndTriggerAlert(product) {
+    try {
+      const { alertsService } = await import('./alerts.service');
+      const { smsService } = await import('./sms.service');
+      const { cacheService } = await import('./cache.service');
+
+      const qty = Number(product.quantity || 0);
+      const reorderLevel = Number(product.reorder_level);
+      const threshold = reorderLevel > 0 ? reorderLevel : 5;
+
+      if (qty <= threshold) {
+        const existingAlerts = await alertsService.getActiveAlerts();
+        const hasLow = (existingAlerts || []).find((a) => a.product_id === product.id && (a.type === 'low_stock' || a.type === 'out_of_stock') && a.status === 'active');
+
+        if (!hasLow) {
+          const isOutOfStock = qty === 0;
+          const alertData = {
+            product_id: product.id,
+            type: isOutOfStock ? 'out_of_stock' : 'low_stock',
+            severity: isOutOfStock ? 'critical' : 'high',
+            title: isOutOfStock ? `${product.name} is out of stock` : `${product.name} is low on stock`,
+            message: isOutOfStock ? `Product ${product.name} (SKU: ${product.sku}) is out of stock.` : `Product ${product.name} (SKU: ${product.sku}) has low inventory (${qty} left).`,
+            metadata: {}
+          };
+
+          await alertsService.createAlert(alertData);
+          await cacheService.clear('alerts');
+
+          // Send SMS immediately
+          const message = smsService.formatStockAlert(alertData, product);
+          await smsService.sendSMS(message).catch(err => console.error('Failed to send SMS on manual update:', err));
+        }
+      }
+    } catch (err) {
+      console.error('Error in immediate alert check:', err);
     }
   },
 
@@ -106,12 +178,12 @@ export const productsService = {
 
   // CSV export
   async exportCsv(products) {
-    const headers = ['sku','name','description','category','brand','unit','price','cost','quantity','reorder_level','max_stock_level','supplier','location','barcode','image_url','is_active']
+    const headers = ['sku', 'name', 'description', 'category', 'brand', 'unit', 'price', 'cost', 'quantity', 'reorder_level', 'max_stock_level', 'supplier', 'location', 'barcode', 'image_url', 'is_active']
     const csv = Papa.unparse(products.map(p => {
       const row = {}
       headers.forEach(h => row[h] = p[h] ?? '')
       return row
-    }),{ columns: headers })
+    }), { columns: headers })
     return csv
   },
 

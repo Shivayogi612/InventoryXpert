@@ -1,22 +1,68 @@
 import React from 'react'
 import Layout from '../components/layout/Layout'
 import useAlerts from '../hooks/useAlerts'
-import { AlertTriangle, AlertCircle, Bell } from 'lucide-react'
+import { AlertTriangle, AlertCircle, RefreshCw, Loader2 } from 'lucide-react'
+import { useAlertEngine } from '../hooks/useAlertEngine'
+import { toast } from 'react-hot-toast'
 
 const severityMap = {
   critical: { color: 'bg-danger text-white', Icon: AlertTriangle },
   high: { color: 'bg-warning text-white', Icon: AlertCircle },
-  medium: { color: 'bg-info text-white', Icon: Bell },
-  low: { color: 'bg-primary-500 text-white', Icon: Bell },
+  medium: { color: 'bg-info text-white', Icon: AlertCircle },
+  low: { color: 'bg-primary-500 text-white', Icon: AlertCircle },
 }
 
-export default function AlertsPage() {
-  const { alerts = [], loading, acknowledge, dismiss, resolve } = useAlerts()
+function AlertsPage() {
+  const { alerts = [], loading, acknowledge, dismiss, resolve, refreshAlerts, unreadCount, markAllRead } = useAlerts()
+  const { generateAlerts, isGenerating } = useAlertEngine()
+
+  const handleGenerateAlerts = async () => {
+    try {
+      await generateAlerts()
+      // Refresh alerts after generation
+      await refreshAlerts()
+      toast.success('Alerts generated successfully')
+    } catch (err) {
+      console.error('Error generating alerts:', err)
+      toast.error('Failed to generate alerts: ' + err.message)
+    }
+  }
 
   return (
     <Layout>
       <div className="space-y-4">
-        <h2 className="text-2xl font-semibold">Alerts</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Inventory Alerts</h1>
+            <p className="text-gray-600 mt-1">Monitor low stock and out of stock levels for your inventory.</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              className="btn-secondary flex items-center gap-2"
+              onClick={handleGenerateAlerts}
+              disabled={isGenerating}
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4" />
+                  Generate Alerts
+                </>
+              )}
+            </button>
+            <button
+              className="btn-secondary"
+              onClick={markAllRead}
+              disabled={unreadCount === 0}
+            >
+              Mark All Read
+            </button>
+          </div>
+        </div>
         <div className="bg-white rounded shadow p-4">
           <div className="grid grid-cols-1 gap-3">
             {alerts.map((a) => {
@@ -51,3 +97,5 @@ export default function AlertsPage() {
     </Layout>
   )
 }
+
+export default AlertsPage

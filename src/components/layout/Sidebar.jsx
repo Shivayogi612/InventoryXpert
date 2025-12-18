@@ -5,11 +5,10 @@ import { Home, Box, Truck, History, TrendingUp } from 'lucide-react'
 const NavItem = ({ to, icon: Icon, label, active }) => (
   <Link
     to={to}
-    className={`group flex items-center gap-3 px-4 py-2 rounded-lg transition-colors ${
-      active
-        ? 'bg-white/5 text-white'
-        : 'text-gray-300 hover:bg-white/5 hover:text-white'
-    }`}
+    className={`group flex items-center gap-3 px-4 py-2 rounded-lg transition-colors ${active
+      ? 'bg-white/5 text-white'
+      : 'text-gray-300 hover:bg-white/5 hover:text-white'
+      }`}
   >
     <Icon className="w-5 h-5 flex-shrink-0" />
     <span className="text-sm font-medium truncate">{label}</span>
@@ -55,10 +54,10 @@ export default function Sidebar({ open = false }) {
         />
 
         {/* <NavItem
-          to="/forecasting"
+          to="/advanced-forecasting"
           icon={TrendingUp}
-          label="Forecasting"
-          active={pathname.startsWith('/forecasting')}
+          label="Advanced Forecasting"
+          active={pathname.startsWith('/advanced-forecasting')}
         /> */}
 
         <NavItem

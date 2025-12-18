@@ -5,12 +5,12 @@ import { productsService } from '../services/products.service'
 import { transactionsService } from '../services/transactions.service'
 import { advancedForecastingService } from '../services/advancedForecasting.service'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts'
-import { 
-  TrendingUp, 
-  Calendar, 
-  Tag, 
-  AlertTriangle, 
-  CheckCircle, 
+import {
+  TrendingUp,
+  Calendar,
+  Tag,
+  AlertTriangle,
+  CheckCircle,
   BarChart3,
   SlidersHorizontal,
   RotateCcw
@@ -27,22 +27,33 @@ export default function AdvancedForecasting() {
   const [scenarioGrowth, setScenarioGrowth] = useState(20)
   const [scenarioResults, setScenarioResults] = useState(null)
   const [safetyStockData, setSafetyStockData] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
-  // Get selected product
   const selectedProduct = useMemo(() => {
     return products.find(p => p.id === selectedProductId) || null
   }, [products, selectedProductId])
+
+  // Filter products based on search query
+  const filteredProducts = useMemo(() => {
+    if (!searchQuery.trim()) return products
+    const query = searchQuery.toLowerCase()
+    return products.filter(p =>
+      p.name?.toLowerCase().includes(query) ||
+      p.sku?.toLowerCase().includes(query) ||
+      p.category?.toLowerCase().includes(query)
+    )
+  }, [products, searchQuery])
 
   // Load historical data when product is selected
   useEffect(() => {
     let mounted = true
     async function loadHistoricalData() {
       if (!selectedProductId) return
-      
+
       try {
         setLoading(true)
         const txns = await transactionsService.getByProduct(selectedProductId, 90)
-        
+
         // Aggregate daily sales
         const dailyMap = {}
         const now = new Date()
@@ -51,19 +62,19 @@ export default function AdvancedForecasting() {
           const key = d.toISOString().slice(0, 10)
           dailyMap[key] = 0
         }
-        
+
         txns.forEach(t => {
           if (!t || String(t.type).toLowerCase() !== 'out') return
           const day = (new Date(t.created_at)).toISOString().slice(0, 10)
           if (day in dailyMap) dailyMap[day] += Math.abs(Number(t.quantity) || 0)
         })
-        
-        const series = Object.keys(dailyMap).map(d => ({ 
-          date: d, 
+
+        const series = Object.keys(dailyMap).map(d => ({
+          date: d,
           actual: dailyMap[d],
           forecasted: null
         }))
-        
+
         if (mounted) {
           setHistoricalData(series)
         }
@@ -75,7 +86,7 @@ export default function AdvancedForecasting() {
         }
       }
     }
-    
+
     loadHistoricalData()
     return () => { mounted = false }
   }, [selectedProductId])
@@ -85,15 +96,15 @@ export default function AdvancedForecasting() {
     let mounted = true
     async function generateForecast() {
       if (!selectedProductId) return
-      
+
       try {
         setLoading(true)
         const forecasts = await advancedForecastingService.generateForecastByModel(
-          selectedProductId, 
-          forecastModel, 
+          selectedProductId,
+          forecastModel,
           forecastParams
         )
-        
+
         // Combine historical and forecast data
         const combinedData = [...historicalData]
         forecasts.forEach((forecast, index) => {
@@ -101,14 +112,14 @@ export default function AdvancedForecasting() {
             combinedData[index].forecasted = forecast.forecasted_demand
           }
         })
-        
+
         if (mounted) {
           setForecastData(forecasts)
-          
+
           // Calculate safety stock
           const safetyStock = advancedForecastingService.calculateDynamicSafetyStock(forecasts, 7, 0.95)
           setSafetyStockData(safetyStock)
-          
+
           // Calculate scenario
           const scenario = advancedForecastingService.calculateScenarioImpact(forecasts, scenarioGrowth)
           setScenarioResults(scenario)
@@ -121,7 +132,7 @@ export default function AdvancedForecasting() {
         }
       }
     }
-    
+
     generateForecast()
     return () => { mounted = false }
   }, [selectedProductId, forecastModel, forecastParams, historicalData, scenarioGrowth])
@@ -170,27 +181,47 @@ export default function AdvancedForecasting() {
 
         {/* Product Selection */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Select Product</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {products.map(product => (
-              <div
-                key={product.id}
-                onClick={() => setSelectedProductId(product.id)}
-                className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                  selectedProductId === product.id
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Select Product</h2>
+            <div className="relative w-full md:w-64">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <SlidersHorizontal className="w-4 h-4 text-gray-400 rotate-90" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search name, SKU, or category..."
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+            {filteredProducts.length === 0 ? (
+              <div className="col-span-full py-8 text-center text-gray-500 bg-gray-50 rounded-lg">
+                No products match your search.
+              </div>
+            ) : (
+              filteredProducts.map(product => (
+                <div
+                  key={product.id}
+                  onClick={() => setSelectedProductId(product.id)}
+                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedProductId === product.id
                     ? 'border-blue-500 bg-blue-50'
                     : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="bg-gray-200 border-2 border-dashed rounded-xl w-12 h-12" />
-                  <div>
-                    <div className="font-medium text-gray-900">{product.name}</div>
-                    <div className="text-sm text-gray-500">{product.sku}</div>
+                    }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="bg-gray-200 border-2 border-dashed rounded-xl w-12 h-12" />
+                    <div>
+                      <div className="font-medium text-gray-900">{product.name}</div>
+                      <div className="text-sm text-gray-500">{product.sku}</div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -216,7 +247,7 @@ export default function AdvancedForecasting() {
                     </div>
                   </div>
                 </div>
-                
+
                 {safetyStockData && (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="bg-blue-50 rounded-lg p-3 text-center">
@@ -243,7 +274,7 @@ export default function AdvancedForecasting() {
             {/* Forecast Controls */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Forecasting Models</h2>
-              
+
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Model Selection */}
                 <div className="lg:col-span-1">
@@ -261,11 +292,10 @@ export default function AdvancedForecasting() {
                             <button
                               key={model.id}
                               onClick={() => setForecastModel(model.id)}
-                              className={`flex items-center gap-3 w-full p-3 rounded-lg border text-left transition-colors ${
-                                forecastModel === model.id
-                                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                              }`}
+                              className={`flex items-center gap-3 w-full p-3 rounded-lg border text-left transition-colors ${forecastModel === model.id
+                                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                }`}
                             >
                               <Icon className="w-5 h-5" />
                               <span className="font-medium">{model.name}</span>
@@ -274,7 +304,7 @@ export default function AdvancedForecasting() {
                         })}
                       </div>
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Forecast Period</label>
                       <input
@@ -293,12 +323,12 @@ export default function AdvancedForecasting() {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Model Parameters */}
                 <div className="lg:col-span-2">
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h3 className="font-medium text-gray-900 mb-3">Model Parameters</h3>
-                    
+
                     {forecastModel === 'sma' && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -319,12 +349,12 @@ export default function AdvancedForecasting() {
                         </div>
                       </div>
                     )}
-                    
+
                     {forecastModel === 'seasonal' && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Season Type</label>
-                          <select 
+                          <select
                             className="w-full rounded-lg border border-gray-300 px-3 py-2"
                             value={forecastParams.seasonType || 'weekly'}
                             onChange={(e) => handleParamChange('seasonType', e.target.value)}
@@ -343,7 +373,7 @@ export default function AdvancedForecasting() {
                         </div>
                       </div>
                     )}
-                    
+
                     {forecastModel === 'promotion' && (
                       <div className="space-y-3">
                         <div className="flex items-center gap-2">
@@ -375,7 +405,7 @@ export default function AdvancedForecasting() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
@@ -383,13 +413,13 @@ export default function AdvancedForecasting() {
                     margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                    <XAxis 
-                      dataKey="date" 
+                    <XAxis
+                      dataKey="date"
                       tickFormatter={formatDate}
                       tick={{ fontSize: 12 }}
                     />
                     <YAxis />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value) => [value, 'Units']}
                       labelFormatter={formatDate}
                       contentStyle={{
@@ -430,7 +460,7 @@ export default function AdvancedForecasting() {
                 <SlidersHorizontal className="w-5 h-5 text-gray-700" />
                 <h2 className="text-lg font-semibold text-gray-900">Scenario Planning</h2>
               </div>
-              
+
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-1">
                   <div className="bg-gray-50 rounded-lg p-4">
@@ -455,7 +485,7 @@ export default function AdvancedForecasting() {
                     </p>
                   </div>
                 </div>
-                
+
                 {scenarioResults && (
                   <div className="lg:col-span-2">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -475,7 +505,7 @@ export default function AdvancedForecasting() {
                         <div className="text-xs text-amber-600">to meet increased demand</div>
                       </div>
                     </div>
-                    
+
                     {scenarioResults.difference_total > 0 && (
                       <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                         <div className="flex items-start gap-2">
@@ -483,8 +513,8 @@ export default function AdvancedForecasting() {
                           <div>
                             <div className="font-medium text-amber-800">Inventory Recommendation</div>
                             <p className="text-sm text-amber-700 mt-1">
-                              Based on your {scenarioGrowth}% growth projection, you should consider increasing 
-                              your stock by {scenarioResults.difference_total} units to avoid stockouts over 
+                              Based on your {scenarioGrowth}% growth projection, you should consider increasing
+                              your stock by {scenarioResults.difference_total} units to avoid stockouts over
                               the next {forecastParams.days} days.
                             </p>
                           </div>
@@ -523,8 +553,8 @@ export default function AdvancedForecasting() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                              <div 
-                                className="bg-blue-600 h-2 rounded-full" 
+                              <div
+                                className="bg-blue-600 h-2 rounded-full"
                                 style={{ width: `${forecast.confidence_level * 100}%` }}
                               ></div>
                             </div>

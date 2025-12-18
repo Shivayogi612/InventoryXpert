@@ -3,15 +3,29 @@ import { supabase } from './supabase'
 export const alertsService = {
   async getActiveAlerts() {
     try {
-      const { data, error } = await supabase
+      console.time('alertsService.getActiveAlerts')
+      console.log('Alerts service: Attempting to fetch active alerts')
+      const { data, error, count } = await supabase
         .from('alerts')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('status', 'active')
         .order('created_at', { ascending: false })
-      if (error) throw error
+      console.log('Alerts service response:', { data, error, count })
+      console.timeEnd('alertsService.getActiveAlerts')
+      if (error) {
+        console.error('Alerts service error:', error)
+        throw error
+      }
+      console.log(`Alerts service: Successfully fetched ${data.length} alerts`)
       return data
     } catch (err) {
       console.error('Error fetching alerts:', err)
+      console.error('Error details:', {
+        message: err.message,
+        code: err.code,
+        details: err.details,
+        hint: err.hint
+      })
       return []
     }
   },
@@ -29,12 +43,17 @@ export const alertsService = {
       return null
     }
   },
-  async dismissAlert(id) {
+  async dismissAlert(id, dismissedBy) {
     try {
       const { data, error } = await supabase
         .from('alerts')
-        .update({ status: 'dismissed', resolved_at: new Date().toISOString() })
+        .update({
+          status: 'dismissed',
+          resolved_at: new Date().toISOString(),
+          acknowledged_by: dismissedBy
+        })
         .eq('id', id)
+        .select()
       if (error) throw error
       return data
     } catch (err) {
@@ -43,12 +62,17 @@ export const alertsService = {
     }
   },
 
-  async resolveAlert(id) {
+  async resolveAlert(id, resolvedBy) {
     try {
       const { data, error } = await supabase
         .from('alerts')
-        .update({ status: 'resolved', resolved_at: new Date().toISOString() })
+        .update({
+          status: 'resolved',
+          resolved_at: new Date().toISOString(),
+          acknowledged_by: resolvedBy
+        })
         .eq('id', id)
+        .select()
       if (error) throw error
       return data
     } catch (err) {

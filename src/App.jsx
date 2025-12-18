@@ -1,24 +1,36 @@
-import React, { Suspense, lazy } from 'react'
+import React, { Suspense, lazy, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import LoadingSpinner from './components/common/LoadingSpinner'
+import ProtectedRoute from './components/common/ProtectedRoute'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Inventory from './pages/Inventory'
 import SupplierOrders from './pages/SupplierOrders'
 import AlertsPage from './pages/Alerts'
 import Transactions from './pages/Transactions'
-import Forecasting from './pages/Forecasting'
 import AdvancedForecasting from './pages/AdvancedForecasting'
-
-function ProtectedRoute({ children }) {
-  const { isAuthenticated, loading } = useAuth()
-  if (loading) return <LoadingSpinner />
-  if (!isAuthenticated) return <Navigate to="/login" replace />
-  return children
-}
+import { backgroundJobsService } from './services/backgroundJobs.service'
 
 export default function App() {
+  useEffect(() => {
+    // Start background jobs when app initializes
+    try {
+      backgroundJobsService.startAllJobs()
+    } catch (error) {
+      console.error('Failed to start background jobs:', error)
+    }
+
+    // Clean up when app unmounts
+    return () => {
+      try {
+        backgroundJobsService.stopAllJobs()
+      } catch (error) {
+        console.error('Failed to stop background jobs:', error)
+      }
+    }
+  }, [])
+
   return (
     <Suspense fallback={<LoadingSpinner />}>
       <Routes>
@@ -63,14 +75,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/forecasting"
-          element={
-            <ProtectedRoute>
-              <Forecasting />
-            </ProtectedRoute>
-          }
-        />
+
         <Route
           path="/advanced-forecasting"
           element={
@@ -79,6 +84,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Suspense>

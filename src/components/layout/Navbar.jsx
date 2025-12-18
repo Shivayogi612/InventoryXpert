@@ -1,28 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { useAuth } from '../../context/AuthContext'
-import { Bell, LogOut } from 'lucide-react'
-import AlertCenter from '../alerts/AlertCenter'
-import useAlerts from '../../hooks/useAlerts'
-import Button from '../ui/Button'
+import { LogOut } from 'lucide-react'
 
 export default function Navbar({ onToggleSidebar }) {
   const { user, logout } = useAuth()
-  const { alerts = [], unreadCount } = useAlerts()
-  const [open, setOpen] = useState(false)
-
-  // Close alert center when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (open && !event.target.closest('.alert-center-container') && !event.target.closest('.notification-button')) {
-        setOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [open])
 
   return (
     <header className="bg-[#0b1220] border-b border-white/10 sticky top-0 z-40">
@@ -39,22 +20,6 @@ export default function Navbar({ onToggleSidebar }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="relative alert-center-container">
-            <Button
-              variant="ghost"
-              className="relative p-0 flex items-center justify-center text-white hover:bg-transparent focus:bg-transparent notification-button"
-              onClick={() => setOpen((prev) => !prev)}
-            >
-              <Bell className="!w-6 !h-6" />
-              {unreadCount > 0 && (
-                <>
-                  <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-danger border-2 border-[#0b1220]" />
-                  <span className="sr-only">{unreadCount} unread alerts</span>
-                </>
-              )}
-            </Button>
-            {open && <AlertCenter onClose={() => setOpen(false)} />}
-          </div>
           <div className="hidden md:flex items-center gap-3 text-sm">
             <span className="text-white truncate max-w-[150px]">{user?.email}</span>
             <button

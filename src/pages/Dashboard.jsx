@@ -1,11 +1,14 @@
 import React, { useMemo } from 'react'
 import Layout from '../components/layout/Layout'
+import BackgroundJobsStatus from '../components/BackgroundJobsStatus'
 import { useCache } from '../hooks/useCache'
 import { productsService } from '../services/products.service'
 import { transactionsService } from '../services/transactions.service'
 import { alertsService } from '../services/alerts.service'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { formatCurrency } from '../utils/currency'
+import { smsService } from '../services/sms.service'
+import { toast } from 'react-hot-toast'
 
 // Modern Metric Card with circular icon
 function MetricCard({ title, value, icon, iconBg, trend, trendValue, showProgress }) {
@@ -44,13 +47,40 @@ function MetricCard({ title, value, icon, iconBg, trend, trendValue, showProgres
 }
 
 export default function Dashboard() {
-  const { data: products = [] } = useCache('products', () => productsService.getAll(), { staleTime: 5 * 60 * 1000 })
-  const { data: transactions = [] } = useCache('transactions', () => transactionsService.getRecent(100), { staleTime: 2 * 60 * 1000 })
-  const { data: alerts = [] } = useCache('alerts', () => alertsService.getActiveAlerts(), { staleTime: 60 * 1000 })
+  console.log('Dashboard component mounting...')
 
+  // Re-enable data fetching to show real products
+  const { data: products = [], loading: productsLoading, error: productsError } = useCache('products', () => {
+    console.log('Fetching products...')
+    return productsService.getAll()
+  }, { staleTime: 5 * 60 * 1000 })
+
+
+  const { data: transactions = [], loading: transactionsLoading, error: transactionsError } = useCache('transactions', () => {
+    console.log('Fetching transactions...')
+    return transactionsService.getRecent(100)
+  }, { staleTime: 2 * 60 * 1000 })
+  /*
+  const transactions = []
+  const transactionsLoading = false
+  const transactionsError = null
+  */
+
+  const { data: alerts = [], loading: alertsLoading, error: alertsError } = useCache('alerts', async () => {
+    console.log('Fetching alerts...')
+    const data = await alertsService.getActiveAlerts()
+    return (data || []).filter(a => a.type === 'low_stock' || a.type === 'out_of_stock')
+  }, { staleTime: 60 * 1000 })
+
+
+  // Always use real data - remove mock data
   const productsList = products || []
   const transactionsList = transactions || []
   const alertsList = alerts || []
+
+  // Check if we have data loading issues
+  const hasDataErrors = productsError || transactionsError || alertsError
+  const isLoading = productsLoading || transactionsLoading || alertsLoading
 
   const totalProducts = productsList.length
   const totalInventoryValue = productsList.reduce((s, p) => s + (p?.quantity || 0) * (p?.price || 0), 0)
@@ -146,7 +176,7 @@ export default function Dashboard() {
         // Profit = revenue - cost
         const cost = value * 0.7 // Assuming 70% cost of goods sold
         const profit = value - cost
-        
+
         if (date >= thirtyDaysAgo) {
           recentValue += value
           recentProfit += profit
@@ -191,6 +221,34 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="dashboard-container">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
+        </div>
+        {/* Error notification */}
+        {hasDataErrors && (
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
+            <p className="font-bold">Data Loading Error</p>
+            <p>There was an error loading data from the database. Check the console for details.</p>
+          </div>
+        )}
+
+        {/* Loading indicator */}
+        {isLoading && (
+          <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-4" role="alert">
+            <p className="font-bold">Loading Data</p>
+            <p>Fetching data from the database...</p>
+          </div>
+        )}
+
+        {/* Empty state notification */}
+        {!isLoading && !hasDataErrors && totalProducts === 0 && (
+          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4" role="alert">
+            <p className="font-bold">No Products Found</p>
+            <p>No products were found in the database. Please add some products to see data here.</p>
+          </div>
+        )}
+
         {/* Top Metrics */}
         <div className="metrics-grid">
           <MetricCard
@@ -228,95 +286,45 @@ export default function Dashboard() {
 
         {/* Charts Section */}
         <div className="charts-grid">
-          {/* Sales Chart */}
-          <div className="chart-card sales-chart">
-            <div className="chart-header">
-              <h3 className="chart-title">Sales</h3>
-              <button className="sync-button">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
-                </svg>
-                Sync
-              </button>
-            </div>
-            <div className="chart-content">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={monthlySales}>
-                  <XAxis
-                    dataKey="month"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#94a3b8', fontSize: 12 }}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#94a3b8', fontSize: 12 }}
-                    tickFormatter={(value) => `${value / 1000}k`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: 'rgba(15, 23, 42, 0.95)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: '8px',
-                      color: '#e2e8f0'
-                    }}
-                  />
-                  <Bar dataKey="sales" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+          <div className="chart-card">
+            <h3 className="chart-title">Monthly Sales</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={monthlySales}>
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <Bar dataKey="sales" fill="#6366f1" />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-
-          {/* Category Distribution Chart */}
-          <div className="chart-card traffic-chart">
+          <div className="chart-card">
             <h3 className="chart-title">Category Distribution</h3>
-            <div className="chart-content">
-              <ResponsiveContainer width="100%" height={240}>
-                <PieChart>
-                  <Pie
-                    data={categoryDistribution}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {categoryDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      background: 'rgba(212, 214, 220, 0.95)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: '8px',
-                      color: '#e2e8f0'
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="traffic-legend">
-                {categoryDistribution.slice(0, 3).map((item, idx) => (
-                  <div key={idx} className="legend-item">
-                    <div className="legend-icon-wrapper" style={{ background: item.color + '20', color: item.color }}>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                        <line x1="3" y1="9" x2="21" y2="9" />
-                        <line x1="9" y1="21" x2="9" y2="9" />
-                      </svg>
-                    </div>
-                    <div className="legend-text">
-                      <div className="legend-label">{item.name}</div>
-                      <div className="legend-value">{item.value}%</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={categoryDistribution}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                >
+                  {categoryDistribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => `${value}%`} />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
         </div>
+
+
+
+        {/* Background Jobs Status */}
+        <BackgroundJobsStatus />
       </div>
     </Layout>
   )

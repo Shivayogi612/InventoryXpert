@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { toast } from 'react-hot-toast'
@@ -7,11 +7,17 @@ import Input from '../components/ui/Input'
 import Button from '../components/ui/Button'
 
 export default function Login() {
-  const { login } = useAuth()
+  const { login, isAuthenticated } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [isAuthenticated, navigate])
 
   const submit = async (e) => {
     e.preventDefault()
@@ -47,18 +53,18 @@ export default function Login() {
 
         {/* FORM */}
         <form onSubmit={submit} className="space-y-5">
-          
+
           {/* Email */}
           <div>
             <label className="text-sm font-medium text-gray-700">Email</label>
-           <Input
-  className="mt-1 text-gray-900 placeholder-gray-400"
-  value={email}
-  onChange={(e) => setEmail(e.target.value)}
-  type="email"
-  placeholder="you@example.com"
-  required
-/>
+            <Input
+              className="mt-1 text-gray-900 placeholder-gray-400"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              type="email"
+              placeholder="you@example.com"
+              required
+            />
 
           </div>
 
@@ -66,12 +72,12 @@ export default function Login() {
           <div>
             <label className="text-sm font-medium text-gray-700">Password</label>
             <Input
-  className="mt-1 text-gray-900 placeholder-gray-400"
-  value={password}
-  onChange={(e) => setPassword(e.target.value)}
-  type="password"
-  required
-/>
+              className="mt-1 text-gray-900 placeholder-gray-400"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type="password"
+              required
+            />
           </div>
 
           {/* Submit */}

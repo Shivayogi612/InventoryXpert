@@ -12,22 +12,32 @@ export function useCache(key, fetchFunction, options = {}) {
 
   useEffect(() => {
     mounted.current = true
-    // 1. Return cached data immediately
-    ;(async () => {
-      try {
-        const cached = await cacheService.get(key)
-        if (mounted.current) {
-          setData(cached ?? initialData)
-        }
-        const last = await cacheService.getLastSyncTime(key)
-        if (last) setLastSync(last)
-      } catch (err) {
-        console.error('Cache read error', err)
-      }
+      // 1. Initial data check
+      ; (async () => {
+        try {
+          // Check if data is stale before showing it
+          const stale = await cacheService.isStale(key, staleTime)
+          const cached = await cacheService.get(key)
 
-      // 2. Trigger background fetch
-      refresh()
-    })()
+          if (mounted.current) {
+            // Only show cached data immediately if it's NOT stale
+            // This prevents the "old data flash" during page refreshes
+            if (cached && !stale) {
+              setData(cached)
+            } else if (!cached) {
+              setData(initialData)
+            }
+          }
+
+          const last = await cacheService.getLastSyncTime(key)
+          if (last) setLastSync(last)
+        } catch (err) {
+          console.error('Cache read error', err)
+        }
+
+        // 2. Trigger background fetch
+        refresh()
+      })()
 
     return () => {
       mounted.current = false
@@ -37,7 +47,10 @@ export function useCache(key, fetchFunction, options = {}) {
 
   const refresh = async () => {
     setSyncing(true)
-    setLoading((prev) => prev || false) // keep loading false for instant display
+    // Show loading spinner if we don't have good data yet
+    if (!data || data.length === 0) {
+      setLoading(true)
+    }
     try {
       const result = await fetchFunction()
       if (!mounted.current) return
@@ -55,7 +68,10 @@ export function useCache(key, fetchFunction, options = {}) {
         toast.error('Failed to sync data. Showing cached version.')
       }
     } finally {
-      if (mounted.current) setSyncing(false)
+      if (mounted.current) {
+        setSyncing(false)
+        setLoading(false)
+      }
     }
   }
 
