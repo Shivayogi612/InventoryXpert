@@ -36,36 +36,60 @@ function SupplierCard({ supplier, onRefresh }) {
 
     return (
         <>
-            <div className="supplier-card">
-                <div className="flex items-start justify-between mb-3">
-                    <div>
+            <div className="professional-supplier-card">
+                <div className="supplier-header">
+                    <div className="supplier-info">
                         <h3 className="supplier-name">{supplier.name}</h3>
                         <p className="supplier-contact">{supplier.contact_person || 'No contact'}</p>
                     </div>
-                    <div className="supplier-rating">
-                        ⭐ {supplier.rating || 0}
-                    </div>
                 </div>
+                
                 <div className="supplier-details">
                     <div className="detail-item">
-                        <Mail size={14} />
-                        <span>{supplier.email || 'No email'}</span>
+                        <div className="detail-icon">
+                            <Mail size={16} />
+                        </div>
+                        <div className="detail-content">
+                            <span className="detail-label">Email</span>
+                            <span className="detail-value">{supplier.email || 'No email'}</span>
+                        </div>
                     </div>
+                    
                     <div className="detail-item">
-                        <Phone size={14} />
-                        <span>{supplier.phone || 'No phone'}</span>
+                        <div className="detail-icon">
+                            <Phone size={16} />
+                        </div>
+                        <div className="detail-content">
+                            <span className="detail-label">Phone</span>
+                            <span className="detail-value">{supplier.phone || 'No phone'}</span>
+                        </div>
                     </div>
+                    
                     <div className="detail-item">
-                        <MapPin size={14} />
-                        <span>{supplier.address || 'No address'}</span>
+                        <div className="detail-icon">
+                            <MapPin size={16} />
+                        </div>
+                        <div className="detail-content">
+                            <span className="detail-label">Address</span>
+                            <span className="detail-value">{supplier.address || 'No address'}</span>
+                        </div>
                     </div>
                 </div>
+                
                 <div className="supplier-actions">
-                    <button className="btn-secondary" onClick={() => setShowEditModal(true)}>
+                    <button 
+                        className="btn btn-secondary btn-sm" 
+                        onClick={() => setShowEditModal(true)}
+                        title="Edit supplier details"
+                    >
                         <Edit size={16} />
-                        Manage
+                        Edit
                     </button>
-                    <button className="btn-danger" onClick={() => setShowDeleteModal(true)}>
+                    <button 
+                        className="btn btn-danger btn-sm" 
+                        onClick={() => setShowDeleteModal(true)}
+                        title="Delete supplier"
+                    >
                         <Trash2 size={16} />
                         Delete
                     </button>
@@ -427,7 +451,6 @@ export default function SupplierOrders() {
                     <StatCard icon={AlertCircle} label="Delayed Orders" value={stats.delayedOrders} color="icon-red" />
                 </div>
 
-                {/* Tabs - Scrollable on mobile */}
                 <div className="tabs-container overflow-x-auto pb-2 mb-4">
                     <div className="flex min-w-max">
                         <button
@@ -616,7 +639,7 @@ export default function SupplierOrders() {
                             </>
                         )}
 
-                        <div className="mt-8 pt-6 border-t border-gray-200">
+                        {/* <div className="mt-8 pt-6 border-t border-gray-200">
                             <h4 className="text-md font-semibold text-gray-900 mb-3">Forecast-Based Auto-Generation</h4>
                             <p className="mb-4 text-gray-600">
                                 Generate purchase orders based on predicted demand to prevent stockouts before they happen.
@@ -644,7 +667,7 @@ export default function SupplierOrders() {
                                     ? 'Generating forecast-based purchase orders...'
                                     : 'Generate Purchase Orders Based on Forecast'}
                             </button>
-                        </div>
+                        </div> */}
                     </div>
                 )}
             </div>

@@ -1,6 +1,5 @@
 import { autoPoGenerationService } from './autoPoGeneration.service'
 import { alertEngineService } from './alertEngine.service'
-import { smartReplenishmentService } from './smartReplenishment.service'
 
 // Store intervals to be able to clear them if needed
 const intervals = new Map()
@@ -27,11 +26,7 @@ export const backgroundJobsService = {
           .catch(err => console.error('Alert Generation job failed:', err))
       }, 5 * 60 * 1000) // 5 minutes
 
-      // Start smart replenishment analysis job (runs every 4 hours)
-      this.startJob('smartReplenishment', () => {
-        return smartReplenishmentService.analyzeAndSuggestTransfers()
-          .catch(err => console.error('Smart Replenishment job failed:', err))
-      }, 4 * 60 * 60 * 1000) // 4 hours
+
     } catch (error) {
       console.error('Error starting background jobs:', error)
     }

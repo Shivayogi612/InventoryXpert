@@ -11,7 +11,7 @@ import { smsService } from '../services/sms.service'
 import { toast } from 'react-hot-toast'
 
 // Modern Metric Card with circular icon
-function MetricCard({ title, value, icon, iconBg, trend, trendValue, showProgress }) {
+function MetricCard({ title, value, icon, iconBg, trend, trendValue, showProgress, subtitle }) {
   // Extract numeric value for progress bar if it's a percentage
   const progressValue = showProgress && typeof value === 'string'
     ? parseInt(value.replace('%', ''))
@@ -23,6 +23,9 @@ function MetricCard({ title, value, icon, iconBg, trend, trendValue, showProgres
         <div className="flex-1">
           <div className="metric-label">{title}</div>
           <div className="metric-value">{value}</div>
+          {subtitle && (
+            <div className="metric-subtitle text-sm text-gray-500 mt-1">{subtitle}</div>
+          )}
           {showProgress && (
             <div className="progress-bar-container">
               <div className="progress-bar" style={{ width: `${progressValue}%` }}></div>
@@ -89,6 +92,11 @@ export default function Dashboard() {
     const reorder = Number(p?.reorder_level)
     const threshold = reorder > 0 ? reorder : 5
     return qty <= threshold
+  }).length
+  
+  const outOfStockCount = productsList.filter((p) => {
+    const qty = Number(p?.quantity || 0)
+    return qty === 0
   }).length
 
   // Monthly sales data from actual transactions
@@ -268,19 +276,20 @@ export default function Dashboard() {
             trendValue={trends.customers.value}
           />
           <MetricCard
-            title="TASK PROGRESS"
-            value={`${taskProgress}%`}
+            title="LOW STOCK ITEMS"
+            value={lowStockCount}
+            subtitle="Below reorder level"
             icon={null}
             iconBg="icon-orange"
-            showProgress={true}
+            showProgress={false}
           />
           <MetricCard
-            title="TOTAL PROFIT"
-            value={`${formatCurrency(totalProfit, { maximumFractionDigits: 0 })}`}
+            title="OUT OF STOCK ITEMS"
+            value={outOfStockCount}
+            subtitle="Immediate restock required"
             icon={null}
-            iconBg="icon-purple"
-            trend={trends.profit.direction}
-            trendValue={trends.profit.value}
+            iconBg="icon-red"
+            showProgress={false}
           />
         </div>
 
